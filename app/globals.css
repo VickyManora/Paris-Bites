@@ -1,0 +1,223 @@
+@import "tailwindcss";
+
+/* ── Palette ──────────────────────────────────────────────
+   Taken from the live Paris Bites site: cream page (#faf8f5),
+   blush gradients, gold from the logo, chocolate as the accent.
+   ──────────────────────────────────────────────────────── */
+:root {
+  --cream-50: #fffdfb;
+  --cream-100: #faf8f5;
+  --cream-200: #f4efe8;
+  --blush-100: #fdf2f4;
+  --blush-200: #f9e3e8;
+  --blush-300: #f0c9d2;
+
+  --ink-900: #241713;
+  --ink-700: #4a332b;
+  --ink-500: #6f574d;
+  --muted: #9c8479;
+
+  --gold-400: #dfbd77;
+  --gold-500: #c79a4b;
+  --gold-600: #a97d33;
+
+  --choc-500: #6b3f22;
+  --choc-600: #4f2c16;
+  --choc-700: #351c0d;
+
+  --edge: color-mix(in oklab, var(--ink-900) 10%, transparent);
+  --edge-soft: color-mix(in oklab, var(--ink-900) 6%, transparent);
+  --shadow-soft: 0 18px 46px -22px color-mix(in oklab, var(--choc-700) 30%, transparent);
+  --shadow-lift: 0 28px 64px -24px color-mix(in oklab, var(--choc-700) 38%, transparent);
+}
+
+@theme inline {
+  --color-cream-50: var(--cream-50);
+  --color-cream-100: var(--cream-100);
+  --color-cream-200: var(--cream-200);
+  --color-blush-100: var(--blush-100);
+  --color-blush-200: var(--blush-200);
+  --color-blush-300: var(--blush-300);
+  --color-ink-900: var(--ink-900);
+  --color-ink-700: var(--ink-700);
+  --color-ink-500: var(--ink-500);
+  --color-muted: var(--muted);
+  --color-gold-400: var(--gold-400);
+  --color-gold-500: var(--gold-500);
+  --color-gold-600: var(--gold-600);
+  --color-choc-500: var(--choc-500);
+  --color-choc-600: var(--choc-600);
+  --color-choc-700: var(--choc-700);
+
+  --font-display: "Playfair Display", Georgia, serif;
+  --font-sans: "Poppins", system-ui, sans-serif;
+}
+
+/* ── Base ────────────────────────────────────────────────── */
+* {
+  min-width: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  color-scheme: light;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--cream-100);
+  color: var(--ink-700);
+  font-family: var(--font-sans);
+  font-feature-settings: "kern", "liga";
+  -webkit-font-smoothing: antialiased;
+  overflow-x: clip;
+}
+
+::selection {
+  background: var(--blush-200);
+  color: var(--ink-900);
+}
+
+/* ── Typography helpers ───────────────────────────────────
+   In @layer components so Tailwind utilities can override them.
+   ──────────────────────────────────────────────────────── */
+@layer components {
+  .display {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    line-height: 1.04;
+    color: var(--ink-900);
+    text-wrap: balance;
+  }
+
+  .accent {
+    color: var(--gold-600);
+    font-style: italic;
+  }
+
+  .kicker {
+    font-size: 0.6875rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .glass {
+    background: color-mix(in oklab, var(--cream-50) 78%, transparent);
+    border: 1px solid var(--edge-soft);
+    backdrop-filter: blur(14px) saturate(1.1);
+  }
+
+  .card {
+    background: var(--cream-50);
+    border: 1px solid var(--edge-soft);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .ghost-numeral {
+    font-family: var(--font-display);
+    font-weight: 700;
+    color: transparent;
+    -webkit-text-stroke: 1px color-mix(in oklab, var(--gold-500) 40%, transparent);
+    line-height: 0.8;
+    user-select: none;
+  }
+}
+
+/* Soft blush light bleeding in, echoing the live site's hero gradient */
+.warm-glow::before {
+  content: "";
+  position: absolute;
+  inset: -20% -10% auto -10%;
+  height: 95%;
+  background:
+    radial-gradient(58% 68% at 78% 6%, rgba(240, 201, 210, 0.5), transparent 70%),
+    radial-gradient(48% 58% at 12% 18%, rgba(250, 232, 214, 0.62), transparent 72%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Very light grain so the flat cream doesn't read as plastic */
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'>\
+<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/></filter>\
+<rect width='140' height='140' filter='url(%23n)'/></svg>");
+  z-index: 2;
+}
+
+/* ── Motion ──────────────────────────────────────────────── */
+@keyframes drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50%      { transform: translate3d(0, -14px, 0) rotate(6deg); }
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0; transform: scale(0.6); }
+  50%      { opacity: 0.85; transform: scale(1); }
+}
+
+/* Choco's idle float. Kept on transform only so it stays on the compositor,
+   and given a longer, softer cycle than the drifting chunks — the mascot
+   should read as calm, not busy. Amplitude halves on small screens. */
+@keyframes choco-bob {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50%      { transform: translate3d(0, -11px, 0) rotate(-1.5deg); }
+}
+
+@keyframes choco-sway {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  33%      { transform: translate3d(4px, -9px, 0) rotate(1.2deg); }
+  66%      { transform: translate3d(-4px, -5px, 0) rotate(-1.2deg); }
+}
+
+/* The hero mascot's own cadence: a slow rise with a hint of tilt, on a short
+   enough cycle to read as alive without ever pulling the eye off the copy.
+   Transform only, so it stays on the compositor. */
+@keyframes choco-lift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-1.1deg); }
+  50%      { transform: translate3d(0, -13px, 0) rotate(1.1deg); }
+}
+
+@keyframes choco-lift-sm {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-0.8deg); }
+  50%      { transform: translate3d(0, -7px, 0) rotate(0.8deg); }
+}
+
+@keyframes choco-bob-sm {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50%      { transform: translate3d(0, -5px, 0) rotate(-1deg); }
+}
+
+@keyframes choco-sway-sm {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -5px, 0); }
+}
+
+.animate-drift { animation: drift 9s ease-in-out infinite; }
+.animate-sparkle { animation: sparkle 4.5s ease-in-out infinite; }
+.animate-choco-bob { animation: choco-bob 6.5s ease-in-out infinite; }
+.animate-choco-sway { animation: choco-sway 8s ease-in-out infinite; }
+.animate-choco-lift { animation: choco-lift 3.6s ease-in-out infinite; }
+
+@media (max-width: 640px) {
+  .animate-choco-bob { animation-name: choco-bob-sm; }
+  .animate-choco-sway { animation-name: choco-sway-sm; }
+  .animate-choco-lift { animation-name: choco-lift-sm; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .animate-drift,
+  .animate-sparkle,
+  .animate-choco-bob,
+  .animate-choco-sway,
+  .animate-choco-lift { animation: none; }
+}

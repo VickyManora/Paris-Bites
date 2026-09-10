@@ -1,0 +1,267 @@
+"use client";
+
+import { useRef } from "react";
+import { motion, useScroll, useTransform, useReducedMotion } from "motion/react";
+import { hero, links } from "@/lib/content";
+import { BowlArt } from "./art/BowlArt";
+import { Chunk } from "./art/Chunk";
+import { RisingLines, ease } from "./motion/Reveal";
+import { usePointerParallax } from "./motion/Tilt";
+import { Choco } from "./art/Choco";
+
+export function Hero() {
+  const ref = useRef<HTMLElement>(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end start"],
+  });
+
+  const drizzleY = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : -170]);
+  const bowlsY = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : -70]);
+  const copyY = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : 58]);
+  const fade = useTransform(scrollYProgress, [0, 0.75], [1, reduce ? 1 : 0.2]);
+
+  // the whole arrangement swings toward the cursor: the pair rotates in 3D,
+  // and each layer slides a different distance so they separate in depth
+  const {
+    ref: artRef,
+    x: pointerX,
+    y: pointerY,
+    handlers: pointerHandlers,
+  } = usePointerParallax<HTMLDivElement>();
+  const pointerTiltY = useTransform(pointerX, [-0.5, 0.5], [-11, 11]);
+  const pointerTiltX = useTransform(pointerY, [-0.5, 0.5], [7, -7]);
+  const scrollTiltY = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : 14]);
+  const scrollTiltX = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : -9]);
+  const tiltY = useTransform<number, number>(
+    [pointerTiltY, scrollTiltY],
+    ([pointer, scroll]) => pointer + scroll,
+  );
+  const tiltX = useTransform<number, number>(
+    [pointerTiltX, scrollTiltX],
+    ([pointer, scroll]) => pointer + scroll,
+  );
+  const frontX = useTransform(pointerX, [-0.5, 0.5], [-26, 26]);
+  const frontY = useTransform(pointerY, [-0.5, 0.5], [-16, 16]);
+  const backX = useTransform(pointerX, [-0.5, 0.5], [-12, 12]);
+  const backY = useTransform(pointerY, [-0.5, 0.5], [-8, 8]);
+  const chunkX = useTransform(pointerX, [-0.5, 0.5], [34, -34]);
+  const chunkY = useTransform(pointerY, [-0.5, 0.5], [20, -20]);
+  const chocoX = useTransform(pointerX, [-0.5, 0.5], [-32, 32]);
+  const chocoY = useTransform(pointerY, [-0.5, 0.5], [-20, 20]);
+
+  return (
+    <section
+      id="home"
+      ref={ref}
+      className="warm-glow grain relative isolate min-h-[100svh] overflow-hidden bg-cream-100 pt-32 pb-20 sm:pt-40 lg:flex lg:items-center lg:pt-36 lg:pb-12"
+    >
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-56 bg-gradient-to-t from-cream-100 to-transparent" />
+
+      <div className="relative z-[1] mx-auto grid w-full max-w-[1400px] items-center gap-10 px-5 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-4">
+        <motion.div style={{ y: copyY, opacity: fade }} className="max-w-xl">
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease }}
+            className="mb-7 flex flex-wrap gap-2"
+          >
+            {hero.badges.map((b) => (
+              <span
+                key={b}
+                className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium text-ink-700"
+              >
+                <span className="relative flex size-1.5">
+                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-gold-500 opacity-70" />
+                  <span className="relative inline-flex size-1.5 rounded-full bg-gold-500" />
+                </span>
+                {b}
+              </span>
+            ))}
+          </motion.div>
+
+          <h1 className="display text-[clamp(2.6rem,7.4vw,5rem)]">
+            <RisingLines lines={hero.headline} />
+          </h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 0.5, ease }}
+            className="mt-7 max-w-[48ch] text-[0.975rem] leading-relaxed text-ink-500 sm:text-base"
+          >
+            {hero.body}
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.9, delay: 0.64, ease }}
+            className="mt-10 flex flex-wrap items-center gap-3"
+          >
+            <motion.a
+              href="#menu"
+              whileTap={reduce ? undefined : { scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 480, damping: 26 }}
+              className="group relative overflow-hidden rounded-full bg-ink-900 px-8 py-4 text-sm font-medium text-cream-50 transition-all duration-500"
+            >
+              <span className="relative z-10">{hero.cta}</span>
+              <span className="absolute inset-0 -translate-y-full bg-gold-600 transition-transform duration-500 group-hover:translate-y-0" />
+            </motion.a>
+            <motion.a
+              href={links.maps}
+              target="_blank"
+              rel="noopener noreferrer"
+              whileTap={reduce ? undefined : { scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 480, damping: 26 }}
+              className="rounded-full border border-ink-900/15 px-7 py-4 text-sm font-medium text-ink-700 transition-colors hover:border-gold-500 hover:text-gold-600"
+            >
+              {hero.secondaryCta}
+            </motion.a>
+          </motion.div>
+
+          <motion.dl
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1, delay: 0.88 }}
+            className="mt-14 flex gap-8 border-t border-ink-900/10 pt-7 sm:gap-12"
+          >
+            {hero.stats.map((s) => (
+              <div key={s.label}>
+                <dt className="display text-2xl sm:text-3xl">{s.value}</dt>
+                <dd className="mt-1 text-xs tracking-wide text-muted">{s.label}</dd>
+              </div>
+            ))}
+          </motion.dl>
+        </motion.div>
+
+        {/* ── art ── */}
+        <div
+          ref={artRef}
+          {...pointerHandlers}
+          className="relative h-[300px] sm:h-[540px] lg:h-auto lg:aspect-[1.02] [perspective:1400px]"
+        >
+          <motion.div
+            style={{ y: drizzleY }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1.6, delay: 0.2, ease }}
+            aria-hidden
+            className="absolute inset-x-[-8%] top-[6%] z-0 h-[70%] rounded-full blur-3xl"
+          >
+            <div
+              className="size-full rounded-full"
+              style={{
+                background:
+                  "radial-gradient(52% 54% at 62% 34%, rgba(240,201,210,0.85), transparent 70%), radial-gradient(44% 46% at 26% 56%, rgba(250,232,214,0.9), transparent 72%)",
+              }}
+            />
+          </motion.div>
+
+          <motion.div
+            style={{ y: bowlsY, rotateX: tiltX, rotateY: tiltY, transformStyle: "preserve-3d" }}
+            className="absolute inset-0"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 70, rotate: 5 }}
+              animate={{ opacity: 1, y: 0, rotate: 3 }}
+              transition={{ duration: 1.3, delay: 0.5, ease }}
+              className="absolute bottom-[2%] right-0 w-[52%] max-w-[350px] origin-bottom [transform-style:preserve-3d] sm:right-[1%] sm:w-[50%] lg:right-[2%] lg:w-[55%] lg:max-w-[400px]"
+            >
+              <motion.div style={{ x: backX, y: backY, z: 0 }}>
+                <BowlArt
+                  tone="berry"
+                  id="strawberry-bliss"
+                  label="Strawberry Chocolate Bliss"
+                  width={350}
+                  sizes="(max-width: 1024px) 52vw, 350px"
+                  className="h-auto w-full drop-shadow-[0_26px_34px_rgba(53,28,13,0.18)]"
+                  spoon
+                />
+              </motion.div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 80, rotate: -6 }}
+              animate={{ opacity: 1, y: 0, rotate: -3 }}
+              transition={{ duration: 1.3, delay: 0.36, ease }}
+              className="absolute bottom-0 left-[27%] z-10 w-[47%] max-w-[330px] origin-bottom [transform-style:preserve-3d] sm:left-[27%] sm:w-[46%] lg:left-[4%] lg:w-[52%] lg:max-w-[380px]"
+            >
+              <motion.div style={{ x: frontX, y: frontY, z: 90 }}>
+                <BowlArt
+                  tone="cream"
+                  id="oreo-licious"
+                  label="Oreo Licious Bowl"
+                  width={330}
+                  sizes="(max-width: 1024px) 50vw, 330px"
+                  className="h-auto w-full drop-shadow-[0_26px_34px_rgba(53,28,13,0.2)]"
+                  priority
+                  pour
+                />
+              </motion.div>
+            </motion.div>
+
+            {/* Choco completes the group: same baseline as the bowls, smallest
+                of the three and frontmost, so the whole character stays visible
+                and the trio reads as one arrangement rather than a pasted-on
+                sticker. Scales with the bowls at every breakpoint. */}
+            {/* On lg Choco floats just above the pair, pulled in from the
+                corner so he reads as part of the group. Below lg he stands
+                beside them on the same baseline — a 350px canvas has no room
+                for a floating third figure without crowding the bowls. */}
+            <motion.div
+              style={{ x: chocoX, y: chocoY, z: 130 }}
+              className="absolute bottom-[9%] left-[2%] z-20 w-[36%] max-w-[150px] [transform-style:preserve-3d] sm:bottom-[6%] sm:w-[31%] sm:max-w-[190px] lg:bottom-auto lg:left-auto lg:right-[8%] lg:top-0 lg:w-[40%] lg:max-w-[290px]"
+            >
+              <Choco
+                pose="default"
+                float="lift"
+                delay={0.62}
+                y={40}
+                priority
+                sizes="(max-width: 640px) 34vw, (max-width: 1024px) 31vw, 290px"
+              />
+            </motion.div>
+          </motion.div>
+
+          {[
+            { l: "0%", b: "8%", s: 38, r: -18, k: "chocolate" as const, d: "0s" },
+            { l: "24%", b: "-1%", s: 26, r: 34, k: "hazelnut" as const, d: "1.2s" },
+            { l: "62%", b: "-2%", s: 40, r: 12, k: "chocolate" as const, d: "2.4s" },
+            { l: "90%", b: "6%", s: 28, r: -40, k: "hazelnut" as const, d: "0.6s" },
+            { l: "44%", b: "-4%", s: 22, r: 62, k: "chocolate" as const, d: "3.1s" },
+          ].map((b, i) => (
+            <motion.div
+              key={i}
+              className="absolute z-20"
+              style={{ left: b.l, bottom: b.b, x: chunkX, y: chunkY }}
+            >
+              <motion.span
+                className="block"
+                initial={{ opacity: 0, y: 24 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 1, delay: 0.9 + i * 0.1, ease }}
+              >
+                <span className="animate-drift block" style={{ animationDelay: b.d }}>
+                  <Chunk kind={b.k} size={b.s} rotate={b.r} id={`hero-${i}`} />
+                </span>
+              </motion.span>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.4, duration: 1 }}
+        style={{ opacity: fade }}
+        className="absolute bottom-7 left-[22%] z-[3] hidden -translate-x-1/2 flex-col items-center gap-2 lg:flex"
+      >
+        <span className="kicker">Scroll</span>
+        <span className="h-10 w-px bg-gradient-to-b from-gold-500/70 to-transparent" />
+      </motion.div>
+    </section>
+  );
+}
