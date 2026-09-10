@@ -16,7 +16,7 @@ export const brand = {
 export const links = {
   whatsapp: "https://wa.me/917447360809",
   whatsappNumber: "917447360809",
-  instagram: "https://instagram.com/parisbitesofficial",
+  instagram: "https://www.instagram.com/parisbitesofficial/",
   maps: "https://maps.app.goo.gl/NvWorxyM6D2BoDHz6",
 };
 
@@ -304,7 +304,7 @@ export const visit = {
     {
       title: "Where",
       lines: [
-        "Near Western Mall, Aundh",
+        "Near Nexus Westend Mall, Aundh",
         "Pune",
         "For exact spot click on GET DIRECTION below",
       ],
@@ -322,6 +322,29 @@ export const visit = {
   cartAlt:
     "The Paris Bites dessert cart in Aundh, Pune — a white cart with a pink and white striped awning and a gold Paris Bites sign, lit up in the evening.",
   cartCaption: "Look for the pink striped awning",
+  /** names the landmarks drawn on the artwork, for screen readers and search */
+  mapAlt:
+    "Illustrated map of Aundh, Pune showing the Paris Bites dessert cart on Nagras Road, near Nexus Westend Mall, The White House, D-Mart Aundh, New DP Road and the Mula River.",
+  mapCta: "Open in Google Maps",
+  landmarkNote: "Just minutes from Nexus Westend Mall and The White House.",
+  /** the one line someone reads out to a driver */
+  address: "Near Nexus Westend Mall, Aundh, Pune",
+  hoursTitle: "Open from 5 PM onwards",
+  hoursLines: ["Every day of the week", "Fresh batches, limited quantity"],
+  /* closes the section — the invitation, not another set of facts */
+  ctaBody:
+    "Just minutes from Nexus Westend Mall, with something delicious waiting for you.",
+  instagramHandle: "@parisbitesofficial",
+  ctaHeading: [
+    { text: "Come find us.", accent: false },
+    { text: "Something sweet is waiting.", accent: true },
+  ],
+  /** three reasons to make the trip, each already true elsewhere on the page */
+  highlights: [
+    { icon: "route" as const, title: "Easy to reach", body: "Near Nexus Westend Mall & The White House" },
+    { icon: "clock" as const, title: "Open daily", body: "From 5 PM onwards" },
+    { icon: "heart" as const, title: "Freshly made", body: "Small batches, big happiness" },
+  ],
   /* CTA order is the hierarchy: directions is the job of this section,
      WhatsApp is how people actually order, Instagram is a nice-to-have. */
   mapsCta: "Get Directions",
