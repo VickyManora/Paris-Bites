@@ -86,9 +86,9 @@ export function Why() {
               />
             </motion.div>
             <BowlArt
-              tone="caramel"
-              id="biscoff-delight"
-              label="Biscoff Delight"
+              tone="berry"
+              id="strawberry-bliss"
+              label="Strawberry Chocolate Bliss"
               width={290}
               sizes="(max-width: 1024px) 58vw, 290px"
               className="relative h-auto w-full drop-shadow-[0_24px_32px_rgba(53,28,13,0.16)]"

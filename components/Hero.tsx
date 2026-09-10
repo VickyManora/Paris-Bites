@@ -1,13 +1,17 @@
 "use client";
 
 import { useRef } from "react";
+import Image from "next/image";
 import { motion, useScroll, useTransform, useReducedMotion } from "motion/react";
 import { hero, links } from "@/lib/content";
+import { wafflePhotos } from "@/lib/waffle-images";
 import { BowlArt } from "./art/BowlArt";
 import { Chunk } from "./art/Chunk";
 import { RisingLines, ease } from "./motion/Reveal";
 import { usePointerParallax } from "./motion/Tilt";
-import { Choco } from "./art/Choco";
+import { Rating } from "./brand/Rating";
+
+const heroWaffle = wafflePhotos["waffle-biscoff-bliss"];
 
 export function Hero() {
   const ref = useRef<HTMLElement>(null);
@@ -48,8 +52,6 @@ export function Hero() {
   const backY = useTransform(pointerY, [-0.5, 0.5], [-8, 8]);
   const chunkX = useTransform(pointerX, [-0.5, 0.5], [34, -34]);
   const chunkY = useTransform(pointerY, [-0.5, 0.5], [20, -20]);
-  const chocoX = useTransform(pointerX, [-0.5, 0.5], [-32, 32]);
-  const chocoY = useTransform(pointerY, [-0.5, 0.5], [-20, 20]);
 
   return (
     <section
@@ -65,8 +67,12 @@ export function Hero() {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease }}
-            className="mb-7 flex flex-wrap gap-2"
+            className="mb-7 flex flex-wrap items-center gap-2"
           >
+            {/* the rating leads the row: it is the one badge a first-time
+                visitor can verify, and it comes from outside the site */}
+            <Rating className="glass rounded-full px-4 py-2 text-xs text-ink-700" />
+
             {hero.badges.map((b) => (
               <span
                 key={b}
@@ -125,7 +131,7 @@ export function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1, delay: 0.88 }}
-            className="mt-14 flex gap-8 border-t border-ink-900/10 pt-7 sm:gap-12"
+            className="mt-14 flex flex-wrap gap-x-8 gap-y-6 border-t border-ink-900/10 pt-7 sm:gap-x-12"
           >
             {hero.stats.map((s) => (
               <div key={s.label}>
@@ -140,7 +146,7 @@ export function Hero() {
         <div
           ref={artRef}
           {...pointerHandlers}
-          className="relative h-[300px] sm:h-[540px] lg:h-auto lg:aspect-[1.02] [perspective:1400px]"
+          className="relative h-[300px] sm:h-[540px] lg:h-auto lg:aspect-[1.42] [perspective:1400px]"
         >
           <motion.div
             style={{ y: drizzleY }}
@@ -163,21 +169,23 @@ export function Hero() {
             style={{ y: bowlsY, rotateX: tiltX, rotateY: tiltY, transformStyle: "preserve-3d" }}
             className="absolute inset-0"
           >
+            {/* one bowl, one waffle — the two things Paris Bites sells. The
+                waffle is landscape where the bowl is square, so it takes more
+                width to carry the same visual weight. */}
             <motion.div
               initial={{ opacity: 0, y: 70, rotate: 5 }}
               animate={{ opacity: 1, y: 0, rotate: 3 }}
               transition={{ duration: 1.3, delay: 0.5, ease }}
-              className="absolute bottom-[2%] right-0 w-[52%] max-w-[350px] origin-bottom [transform-style:preserve-3d] sm:right-[1%] sm:w-[50%] lg:right-[2%] lg:w-[55%] lg:max-w-[400px]"
+              className="absolute bottom-[6%] right-0 w-[62%] max-w-[400px] origin-bottom [transform-style:preserve-3d] sm:right-[1%] sm:w-[60%] lg:right-[1%] lg:w-[64%] lg:max-w-[470px]"
             >
               <motion.div style={{ x: backX, y: backY, z: 0 }}>
-                <BowlArt
-                  tone="berry"
-                  id="strawberry-bliss"
-                  label="Strawberry Chocolate Bliss"
-                  width={350}
-                  sizes="(max-width: 1024px) 52vw, 350px"
+                <Image
+                  src={heroWaffle}
+                  alt="Paris Bites Biscoff Bliss waffle"
+                  sizes="(max-width: 1024px) 62vw, 470px"
+                  placeholder="blur"
+                  priority
                   className="h-auto w-full drop-shadow-[0_26px_34px_rgba(53,28,13,0.18)]"
-                  spoon
                 />
               </motion.div>
             </motion.div>
@@ -200,28 +208,6 @@ export function Hero() {
                   pour
                 />
               </motion.div>
-            </motion.div>
-
-            {/* Choco completes the group: same baseline as the bowls, smallest
-                of the three and frontmost, so the whole character stays visible
-                and the trio reads as one arrangement rather than a pasted-on
-                sticker. Scales with the bowls at every breakpoint. */}
-            {/* On lg Choco floats just above the pair, pulled in from the
-                corner so he reads as part of the group. Below lg he stands
-                beside them on the same baseline — a 350px canvas has no room
-                for a floating third figure without crowding the bowls. */}
-            <motion.div
-              style={{ x: chocoX, y: chocoY, z: 130 }}
-              className="absolute bottom-[9%] left-[2%] z-20 w-[36%] max-w-[150px] [transform-style:preserve-3d] sm:bottom-[6%] sm:w-[31%] sm:max-w-[190px] lg:bottom-auto lg:left-auto lg:right-[8%] lg:top-0 lg:w-[40%] lg:max-w-[290px]"
-            >
-              <Choco
-                pose="default"
-                float="lift"
-                delay={0.62}
-                y={40}
-                priority
-                sizes="(max-width: 640px) 34vw, (max-width: 1024px) 31vw, 290px"
-              />
             </motion.div>
           </motion.div>
 
@@ -257,7 +243,7 @@ export function Hero() {
         animate={{ opacity: 1 }}
         transition={{ delay: 1.4, duration: 1 }}
         style={{ opacity: fade }}
-        className="absolute bottom-7 left-[22%] z-[3] hidden -translate-x-1/2 flex-col items-center gap-2 lg:flex"
+        className="absolute bottom-7 left-1/2 z-[3] hidden -translate-x-1/2 flex-col items-center gap-2 lg:flex"
       >
         <span className="kicker">Scroll</span>
         <span className="h-10 w-px bg-gradient-to-b from-gold-500/70 to-transparent" />

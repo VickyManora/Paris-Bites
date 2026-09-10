@@ -8,6 +8,7 @@ import { Chunk } from "./art/Chunk";
 import { cartImage } from "@/lib/brand-images";
 import { useTilt } from "./motion/Tilt";
 import { Choco } from "./art/Choco";
+import { Rating } from "./brand/Rating";
 
 export function Visit() {
   return (
@@ -24,6 +25,9 @@ export function Visit() {
           <p className="mx-auto mt-6 max-w-[52ch] text-sm leading-relaxed text-ink-500 sm:text-base">
             {visit.body}
           </p>
+
+          {/* right where someone decides whether the trip is worth it */}
+          <Rating starSize={15} className="mt-6 text-sm text-ink-700" />
         </Reveal>
 
         {/* the cart photo leads, because recognising it on the street is the

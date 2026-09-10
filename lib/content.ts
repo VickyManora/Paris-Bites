@@ -20,6 +20,28 @@ export const links = {
   maps: "https://maps.app.goo.gl/NvWorxyM6D2BoDHz6",
 };
 
+/* ── Google reviews ────────────────────────────────────────
+   The live numbers from the Google Business listing. `url` points at the
+   listing itself so anyone can check the claim — never state a rating here
+   that the listing does not show. Update the rating and the count together.
+
+   `count` is how many people left a rating, which is a much smaller number
+   than how many have been served — see hero.stats for that one. The badge
+   renders as "4.9 (254)", built from these two fields so the number in the
+   copy can never drift from the number here.
+   ───────────────────────────────────────────────────────── */
+export const reviews = {
+  /** out of 5; the fifth star is drawn part-filled, so 4.9 stays 4.9 */
+  rating: 4.9,
+  outOf: 5,
+  /** ratings left on the listing */
+  count: 254,
+  source: "Google reviews",
+  url: links.maps,
+  /** the whole claim in one sentence — the stars themselves are decorative */
+  aria: "Rated 4.9 out of 5 from 254 Google reviews",
+};
+
 export const nav = {
   links: [
     { label: "Home", href: "#home" },
@@ -42,6 +64,7 @@ export const hero = {
   cta: "View menu",
   secondaryCta: "Visit us today",
   stats: [
+    { value: "2500+", label: "Customers served" },
     { value: "5 PM", label: "Doors open" },
     { value: "8", label: "Signature bowls" },
     { value: "100%", label: "Made to order" },
