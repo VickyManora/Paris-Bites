@@ -60,6 +60,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* anchor targets clear the fixed header instead of hiding under it */
+  scroll-padding-top: 6.5rem;
   color-scheme: light;
   -webkit-text-size-adjust: 100%;
 }

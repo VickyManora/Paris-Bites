@@ -6,7 +6,6 @@ import { why } from "@/lib/content";
 import { BowlArt } from "./art/BowlArt";
 import { Chunk } from "./art/Chunk";
 import { Reveal, RisingLines } from "./motion/Reveal";
-import { Choco } from "./art/Choco";
 
 /**
  * Desktop: the four points sit in two outer columns around a centred bowl.
@@ -42,7 +41,7 @@ export function Why() {
     <section
       id="why"
       ref={ref}
-      className="grain relative isolate overflow-hidden bg-cream-50 py-24 sm:py-32"
+      className="grain relative isolate overflow-hidden bg-cream-50 py-20 sm:py-24 lg:py-28"
     >
       {/* blush wash so this section separates from the hero without going dark */}
       <div
@@ -106,16 +105,6 @@ export function Why() {
             />
           ))}
         </div>
-
-        {/* inline under the CTA on narrow screens so it can never sit on top
-            of the copy; only once there is room does it move to the corner */}
-        <Choco
-          pose="heart"
-          float="bob"
-          delay={0.1}
-          sizes="(max-width: 640px) 40vw, (max-width: 1024px) 26vw, 210px"
-          className="mx-auto mt-14 w-[40%] max-w-[150px] sm:w-[26%] lg:absolute lg:bottom-0 lg:right-0 lg:mx-0 lg:mt-0 lg:w-[15%] lg:max-w-[210px]"
-        />
 
         <Reveal delay={0.15} className="mt-20 flex justify-center">
           <motion.a

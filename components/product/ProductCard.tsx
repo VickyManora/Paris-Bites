@@ -1,7 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { motion, useAnimationControls, useScroll, useTransform } from "motion/react";
+import {
+  motion,
+  useAnimationControls,
+  useScroll,
+  useTransform,
+} from "motion/react";
 
 import { menu } from "@/lib/content";
 import type { Bowl as Product } from "@/lib/content";
@@ -29,6 +34,7 @@ export function ProductCard({
   /** width of the overhang slot; waffles are wider and flatter than bowls */
   artClassName = "w-[52%] max-w-[176px]",
   addLabel,
+  headingLevel: Heading = "h3",
 }: {
   product: Product;
   categoryTitle: string;
@@ -36,6 +42,8 @@ export function ProductCard({
   artClassName?: string;
   /** noun for the aria-labels, e.g. "waffle"; omit for plain product names */
   addLabel?: string;
+  /** keeps the document outline correct: h4 under a category, h3 without one */
+  headingLevel?: "h3" | "h4";
 }) {
   const { qtys, add, setQty } = useCart();
   const qty = qtys[product.id] ?? 0;
@@ -50,7 +58,11 @@ export function ProductCard({
 
   // the artwork drifts against the card as the card crosses the viewport, so
   // the gap between them keeps changing and the depth reads without a cursor
-  const artDrift = useTransform(scrollYProgress, [0, 1], reduce ? [0, 0] : [16, -16]);
+  const artDrift = useTransform(
+    scrollYProgress,
+    [0, 1],
+    reduce ? [0, 0] : [16, -16],
+  );
   const artLift = useTransform(
     scrollYProgress,
     [0, 0.5, 1],
@@ -60,7 +72,11 @@ export function ProductCard({
   // touch devices never fire the pointer tilt, so the card also leans purely
   // from where it sits in the viewport — summed with the cursor tilt so a
   // mouse and a scroll compose instead of fighting
-  const scrollTilt = useTransform(scrollYProgress, [0, 0.5, 1], reduce ? [0, 0, 0] : [9, 0, -7]);
+  const scrollTilt = useTransform(
+    scrollYProgress,
+    [0, 0.5, 1],
+    reduce ? [0, 0, 0] : [9, 0, -7],
+  );
   const tiltX = useTransform<number, number>(
     [rotateX, scrollTilt],
     ([pointerTilt, viewportTilt]) => pointerTilt + viewportTilt,
@@ -98,19 +114,27 @@ export function ProductCard({
         />
 
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex -translate-y-1/2 justify-center [transform-style:preserve-3d]">
-          <motion.div
-            style={{ y: artDrift, scale: artLift, z: 64 }}
-            className={`${artClassName} [transform-style:preserve-3d]`}
+          {/* the Z lift is a class, not a motion value: motion renders a
+              MotionValue-driven transform as `transform:none` on the server,
+              so putting `z` there made the card's artwork jump in size the
+              moment React hydrated */}
+          <div
+            className={`${artClassName} [transform:translateZ(64px)] [transform-style:preserve-3d]`}
           >
-            {/* the tap pop lives on its own element — sharing `scale` with the
+            <motion.div
+              style={{ y: artDrift, scale: artLift }}
+              className="[transform-style:preserve-3d]"
+            >
+              {/* the tap pop lives on its own element — sharing `scale` with the
                 scroll lift would let the pop's end value latch and freeze it */}
-            <motion.div animate={pop}>
-              {art({
-                className:
-                  "h-auto w-full drop-shadow-[0_20px_24px_rgba(53,28,13,0.24)] transition-transform duration-500 ease-out group-hover:-translate-y-2 group-hover:scale-[1.06]",
-              })}
+              <motion.div animate={pop}>
+                {art({
+                  className:
+                    "h-auto w-full drop-shadow-[0_20px_24px_rgba(53,28,13,0.24)] transition-transform duration-500 ease-out group-hover:-translate-y-2 group-hover:scale-[1.06]",
+                })}
+              </motion.div>
             </motion.div>
-          </motion.div>
+          </div>
         </div>
 
         {/* copy sits just proud of the card face so it parallaxes with the tilt */}
@@ -118,7 +142,9 @@ export function ProductCard({
           {/* the badge rides the title line rather than the top-right corner —
               the overhanging artwork owns that corner on narrow cards */}
           <div className="flex items-start justify-between gap-3">
-            <h3 className="display text-base sm:text-lg">{product.name}</h3>
+            <Heading className="display text-base sm:text-lg">
+              {product.name}
+            </Heading>
             {product.badge && (
               <span className="mt-1 shrink-0 rounded-full bg-blush-200 px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-wider text-gold-600">
                 {product.badge}
@@ -127,7 +153,9 @@ export function ProductCard({
           </div>
 
           {product.note && (
-            <p className="mt-2 text-[0.8125rem] leading-relaxed text-ink-500">{product.note}</p>
+            <p className="mt-2 text-[0.8125rem] leading-relaxed text-ink-500">
+              {product.note}
+            </p>
           )}
         </div>
 
@@ -177,7 +205,10 @@ export function ProductCard({
                   onClick={() => {
                     setQty(product.id, qty + 1);
                     if (!reduce)
-                      pop.start({ scale: [1, 1.1, 1], transition: { duration: 0.4, ease } });
+                      pop.start({
+                        scale: [1, 1.1, 1],
+                        transition: { duration: 0.4, ease },
+                      });
                   }}
                   whileTap={reduce ? undefined : { scale: 0.85 }}
                   className="flex size-11 items-center justify-center rounded-full text-ink-700 transition-colors hover:bg-cream-200 lg:size-9"

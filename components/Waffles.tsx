@@ -21,7 +21,7 @@ export function Waffles() {
     <section
       id="waffles"
       aria-labelledby="waffles-heading"
-      className="grain relative isolate overflow-hidden bg-cream-50 py-24 sm:py-32"
+      className="grain relative isolate overflow-hidden bg-cream-50 py-20 sm:py-24 lg:py-28"
     >
       {/* blush wash, echoing the Why section, so waffles read as their own
           chapter rather than a second helping of the bowls grid */}
@@ -60,7 +60,7 @@ export function Waffles() {
 
         {/* the waffles overhang their tiles, so the grid carries the clearance
             exactly as the bowls grid does */}
-        <Stagger className="mt-28 grid gap-x-4 gap-y-28 sm:mt-32 sm:grid-cols-2 sm:gap-y-32 lg:grid-cols-3">
+        <Stagger className="mt-28 grid gap-x-5 gap-y-28 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-6">
           {waffles.category.items.map((waffle) => (
             <WaffleCard key={waffle.id} waffle={waffle} />
           ))}
@@ -87,7 +87,6 @@ function WaffleCard({ waffle }: { waffle: Product }) {
           src={photo}
           alt={`Paris Bites ${waffle.name} waffle`}
           sizes="(max-width: 640px) 58vw, (max-width: 1024px) 30vw, 228px"
-          placeholder="blur"
           className={className}
         />
       )}

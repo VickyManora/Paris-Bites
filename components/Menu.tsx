@@ -12,7 +12,7 @@ export function Menu() {
   return (
     <section
       id="menu"
-      className="grain relative isolate overflow-hidden bg-cream-100 py-24 sm:py-32"
+      className="grain relative isolate overflow-hidden bg-cream-100 py-20 sm:py-24 lg:py-28"
     >
       <div className="mx-auto max-w-[1400px] px-5 sm:px-8">
         <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
@@ -36,7 +36,7 @@ export function Menu() {
         </div>
 
         {menu.categories.map((category, ci) => (
-          <div key={category.id} className="mt-20 lg:mt-28">
+          <div key={category.id} className="mt-16 lg:mt-20">
             <Reveal className="flex flex-wrap items-end justify-between gap-4 border-b border-ink-900/10 pb-5">
               <div>
                 <h3 className="display text-xl sm:text-2xl">
@@ -56,7 +56,7 @@ export function Menu() {
             {/* the bowls sit half outside their card, so the grid carries the
                 clearance: top margin for row one, tall row gaps after it */}
             <Stagger
-              className="mt-28 grid gap-x-4 gap-y-28 sm:mt-32 sm:grid-cols-2 sm:gap-y-32 lg:grid-cols-3"
+              className="mt-28 grid gap-x-5 gap-y-28 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-6"
               delay={ci * 0.05}
             >
               {category.items.map((bowl) => (
@@ -96,6 +96,7 @@ function BowlCard({ bowl, category }: { bowl: BowlType; category: Category }) {
     <ProductCard
       product={bowl}
       categoryTitle={category.title}
+      headingLevel="h4"
       art={({ className }) => (
         <BowlArt
           tone={bowl.tone}

@@ -65,7 +65,7 @@ export function Nav() {
 
         <div
           className={`relative mx-auto flex max-w-[1400px] items-center justify-between gap-4 px-5 transition-all duration-500 sm:px-8 ${
-            scrolled ? "py-3" : "py-5"
+            scrolled ? "py-2.5" : "py-4"
           }`}
         >
           {/* the descriptor line is dropped at this size — see Logo */}

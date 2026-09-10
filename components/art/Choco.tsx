@@ -60,7 +60,6 @@ export function Choco({
           src={chocoPoses[pose]}
           alt={alt}
           sizes={sizes}
-          placeholder="blur"
           priority={priority}
           draggable={false}
           className="h-auto w-full"

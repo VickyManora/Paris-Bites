@@ -4,7 +4,6 @@ import Image from "next/image";
 import { motion } from "motion/react";
 import { links, visit } from "@/lib/content";
 import { Reveal, RisingLines } from "./motion/Reveal";
-import { Chunk } from "./art/Chunk";
 import { cartImage } from "@/lib/brand-images";
 import { useTilt } from "./motion/Tilt";
 import { Choco } from "./art/Choco";
@@ -14,7 +13,7 @@ export function Visit() {
   return (
     <section
       id="visit"
-      className="warm-glow grain relative isolate overflow-hidden bg-cream-50 py-24 sm:py-32"
+      className="warm-glow grain relative isolate overflow-hidden bg-cream-50 py-20 sm:py-24 lg:py-28"
     >
       <div className="relative z-[1] mx-auto max-w-[1400px] px-5 sm:px-8">
         <Reveal className="mx-auto max-w-2xl text-center">
@@ -56,10 +55,10 @@ export function Visit() {
             </figure>
           </Reveal>
 
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1 lg:content-center">
             {visit.details.map((d, i) => (
-              <Reveal key={d.title} delay={0.08 + i * 0.08} className="h-full [perspective:1200px]">
-                <DetailCard title={d.title} lines={d.lines} index={i} />
+              <Reveal key={d.title} delay={0.08 + i * 0.08} className="[perspective:1200px]">
+                <DetailCard title={d.title} lines={d.lines} />
               </Reveal>
             ))}
           </div>
@@ -130,15 +129,7 @@ export function Visit() {
 }
 
 /** Same pointer tilt as the menu cards, dialled down — these are text, not art. */
-function DetailCard({
-  title,
-  lines,
-  index,
-}: {
-  title: string;
-  lines: string[];
-  index: number;
-}) {
+function DetailCard({ title, lines }: { title: string; lines: string[] }) {
   const { ref, rotateX, rotateY, glareBackground, handlers } = useTilt<HTMLDivElement>({
     max: 5,
     glare: 0.12,
@@ -149,7 +140,7 @@ function DetailCard({
       ref={ref}
       {...handlers}
       style={{ rotateX, rotateY, transformStyle: "preserve-3d" }}
-      className="card group relative h-full rounded-2xl p-8 transition-shadow duration-500 hover:shadow-[var(--shadow-lift)]"
+      className="card group relative h-full rounded-2xl p-6 transition-shadow duration-500 hover:shadow-[var(--shadow-lift)] sm:p-7"
     >
       <motion.span
         aria-hidden
@@ -171,17 +162,6 @@ function DetailCard({
         </ul>
       </div>
 
-      <div
-        className="animate-drift absolute bottom-4 right-5 opacity-60 [transform:translateZ(46px)]"
-        style={{ animationDelay: `${index * 1.6}s` }}
-      >
-        <Chunk
-          kind={index === 0 ? "chocolate" : "hazelnut"}
-          size={44}
-          rotate={index === 0 ? -22 : 34}
-          id={`visit-${index}`}
-        />
-      </div>
     </motion.div>
   );
 }

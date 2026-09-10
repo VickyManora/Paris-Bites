@@ -42,6 +42,16 @@ export const reviews = {
   aria: "Rated 4.9 out of 5 from 254 Google reviews",
 };
 
+/* ── Link preview ──────────────────────────────────────────
+   The card WhatsApp, Instagram and X draw when someone shares the URL —
+   rendered by app/opengraph-image.tsx. Keep the headline to roughly 40
+   characters; past that it starts crowding the cart photo beside it.
+   ───────────────────────────────────────────────────────── */
+export const share = {
+  headline: "Chocolate dessert bowls & waffles",
+  sub: "Made fresh to order, every evening",
+};
+
 export const nav = {
   links: [
     { label: "Home", href: "#home" },

@@ -4,12 +4,12 @@ import { Logo } from "./brand/Logo";
 
 export function Footer() {
   return (
-    <footer className="grain relative isolate overflow-hidden border-t border-ink-900/10 bg-cream-100 pt-16 pb-10">
+    <footer className="grain relative isolate overflow-hidden border-t border-ink-900/10 bg-cream-100 pb-8 pt-14">
       <div className="mx-auto max-w-[1400px] px-5 sm:px-8">
-        <div className="grid gap-12 lg:grid-cols-[1.3fr_2fr]">
+        <div className="grid gap-10 lg:grid-cols-[1.15fr_2fr] lg:gap-12">
           <div>
-            <Logo variant="lockup" sizes="(max-width: 640px) 152px, 176px" className="h-24 sm:h-28" />
-            <p className="mt-5 max-w-[34ch] text-sm leading-relaxed text-ink-500">
+            <Logo variant="lockup" sizes="(max-width: 640px) 152px, 176px" className="h-16 sm:h-20" />
+            <p className="mt-4 max-w-[34ch] text-sm leading-relaxed text-ink-500">
               {brand.tagline}
             </p>
 
@@ -19,7 +19,7 @@ export function Footer() {
               pose="thumbsUp"
               float="bob"
               sizes="(max-width: 640px) 28vw, (max-width: 1024px) 16vw, 132px"
-              className="mt-8 w-[28%] max-w-[104px] sm:w-[16%] lg:mt-10 lg:w-[34%] lg:max-w-[132px]"
+              className="mt-6 w-[26%] max-w-[92px] sm:w-[14%] lg:mt-8 lg:w-[30%] lg:max-w-[116px]"
             />
           </div>
 
@@ -87,14 +87,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div
-          aria-hidden
-          className="display pointer-events-none mt-16 -mb-[0.1em] select-none overflow-hidden text-center text-[clamp(3rem,13vw,11rem)] italic leading-none text-gold-500/[0.13]"
-        >
-          {brand.name}
-        </div>
-
-        <div className="flex flex-col gap-3 border-t border-ink-900/10 pt-7 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-12 flex flex-col gap-3 border-t border-ink-900/10 pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between lg:mt-14">
           <p>{footer.compliance}</p>
           <p>
             © {new Date().getFullYear()} {brand.name} — {brand.descriptor} ·{" "}

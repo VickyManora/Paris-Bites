@@ -8,6 +8,11 @@ type Tone = "dark" | "berry" | "caramel" | "cream";
 /**
  * A bowl, photographed if we have a shot of it and drawn if we don't.
  *
+ * No blur placeholder: the photographs are transparent cut-outs, so a
+ * placeholder renders as a smeared opaque rectangle filling the whole box
+ * and then snaps to the cut-out. The static import reserves the space, so
+ * there is no layout shift without it.
+ *
  * `id` is the bowl id from content.ts — it's what the photo is looked up by.
  * The SVG-only flourishes (`spoon`, `pour`) are ignored once a photo exists,
  * since the photo carries its own garnish.
@@ -47,7 +52,6 @@ export function BowlArt({
       src={photo}
       alt={label}
       sizes={sizes ?? `${width}px`}
-      placeholder="blur"
       priority={priority}
       className={className}
       style={{ height: "auto" }}

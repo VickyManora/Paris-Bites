@@ -2,7 +2,12 @@
 
 import { useRef } from "react";
 import Image from "next/image";
-import { motion, useScroll, useTransform, useReducedMotion } from "motion/react";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useReducedMotion,
+} from "motion/react";
 import { hero, links } from "@/lib/content";
 import { wafflePhotos } from "@/lib/waffle-images";
 import { BowlArt } from "./art/BowlArt";
@@ -21,7 +26,11 @@ export function Hero() {
     offset: ["start start", "end start"],
   });
 
-  const drizzleY = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : -170]);
+  const drizzleY = useTransform(
+    scrollYProgress,
+    [0, 1],
+    [0, reduce ? 0 : -170],
+  );
   const bowlsY = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : -70]);
   const copyY = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : 58]);
   const fade = useTransform(scrollYProgress, [0, 0.75], [1, reduce ? 1 : 0.2]);
@@ -36,8 +45,16 @@ export function Hero() {
   } = usePointerParallax<HTMLDivElement>();
   const pointerTiltY = useTransform(pointerX, [-0.5, 0.5], [-11, 11]);
   const pointerTiltX = useTransform(pointerY, [-0.5, 0.5], [7, -7]);
-  const scrollTiltY = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : 14]);
-  const scrollTiltX = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : -9]);
+  const scrollTiltY = useTransform(
+    scrollYProgress,
+    [0, 1],
+    [0, reduce ? 0 : 14],
+  );
+  const scrollTiltX = useTransform(
+    scrollYProgress,
+    [0, 1],
+    [0, reduce ? 0 : -9],
+  );
   const tiltY = useTransform<number, number>(
     [pointerTiltY, scrollTiltY],
     ([pointer, scroll]) => pointer + scroll,
@@ -136,7 +153,9 @@ export function Hero() {
             {hero.stats.map((s) => (
               <div key={s.label}>
                 <dt className="display text-2xl sm:text-3xl">{s.value}</dt>
-                <dd className="mt-1 text-xs tracking-wide text-muted">{s.label}</dd>
+                <dd className="mt-1 text-xs tracking-wide text-muted">
+                  {s.label}
+                </dd>
               </div>
             ))}
           </motion.dl>
@@ -166,7 +185,12 @@ export function Hero() {
           </motion.div>
 
           <motion.div
-            style={{ y: bowlsY, rotateX: tiltX, rotateY: tiltY, transformStyle: "preserve-3d" }}
+            style={{
+              y: bowlsY,
+              rotateX: tiltX,
+              rotateY: tiltY,
+              transformStyle: "preserve-3d",
+            }}
             className="absolute inset-0"
           >
             {/* one bowl, one waffle — the two things Paris Bites sells. The
@@ -178,12 +202,11 @@ export function Hero() {
               transition={{ duration: 1.3, delay: 0.5, ease }}
               className="absolute bottom-[6%] right-0 w-[62%] max-w-[400px] origin-bottom [transform-style:preserve-3d] sm:right-[1%] sm:w-[60%] lg:right-[1%] lg:w-[64%] lg:max-w-[470px]"
             >
-              <motion.div style={{ x: backX, y: backY, z: 0 }}>
+              <motion.div style={{ x: backX, y: backY }}>
                 <Image
                   src={heroWaffle}
                   alt="Paris Bites Biscoff Bliss waffle"
                   sizes="(max-width: 1024px) 62vw, 470px"
-                  placeholder="blur"
                   priority
                   className="h-auto w-full drop-shadow-[0_26px_34px_rgba(53,28,13,0.18)]"
                 />
@@ -196,27 +219,64 @@ export function Hero() {
               transition={{ duration: 1.3, delay: 0.36, ease }}
               className="absolute bottom-0 left-[27%] z-10 w-[47%] max-w-[330px] origin-bottom [transform-style:preserve-3d] sm:left-[27%] sm:w-[46%] lg:left-[4%] lg:w-[52%] lg:max-w-[380px]"
             >
-              <motion.div style={{ x: frontX, y: frontY, z: 90 }}>
-                <BowlArt
-                  tone="cream"
-                  id="oreo-licious"
-                  label="Oreo Licious Bowl"
-                  width={330}
-                  sizes="(max-width: 1024px) 50vw, 330px"
-                  className="h-auto w-full drop-shadow-[0_26px_34px_rgba(53,28,13,0.2)]"
-                  priority
-                  pour
-                />
-              </motion.div>
+              <div className="[transform:translateZ(90px)] [transform-style:preserve-3d]">
+                <motion.div style={{ x: frontX, y: frontY }}>
+                  <BowlArt
+                    tone="cream"
+                    id="oreo-licious"
+                    label="Oreo Licious Bowl"
+                    width={330}
+                    sizes="(max-width: 1024px) 50vw, 330px"
+                    className="h-auto w-full drop-shadow-[0_26px_34px_rgba(53,28,13,0.2)]"
+                    priority
+                    pour
+                  />
+                </motion.div>
+              </div>
             </motion.div>
           </motion.div>
 
           {[
-            { l: "0%", b: "8%", s: 38, r: -18, k: "chocolate" as const, d: "0s" },
-            { l: "24%", b: "-1%", s: 26, r: 34, k: "hazelnut" as const, d: "1.2s" },
-            { l: "62%", b: "-2%", s: 40, r: 12, k: "chocolate" as const, d: "2.4s" },
-            { l: "90%", b: "6%", s: 28, r: -40, k: "hazelnut" as const, d: "0.6s" },
-            { l: "44%", b: "-4%", s: 22, r: 62, k: "chocolate" as const, d: "3.1s" },
+            {
+              l: "0%",
+              b: "8%",
+              s: 38,
+              r: -18,
+              k: "chocolate" as const,
+              d: "0s",
+            },
+            {
+              l: "24%",
+              b: "-1%",
+              s: 26,
+              r: 34,
+              k: "hazelnut" as const,
+              d: "1.2s",
+            },
+            {
+              l: "62%",
+              b: "-2%",
+              s: 40,
+              r: 12,
+              k: "chocolate" as const,
+              d: "2.4s",
+            },
+            {
+              l: "90%",
+              b: "6%",
+              s: 28,
+              r: -40,
+              k: "hazelnut" as const,
+              d: "0.6s",
+            },
+            {
+              l: "44%",
+              b: "-4%",
+              s: 22,
+              r: 62,
+              k: "chocolate" as const,
+              d: "3.1s",
+            },
           ].map((b, i) => (
             <motion.div
               key={i}
@@ -229,7 +289,10 @@ export function Hero() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 1, delay: 0.9 + i * 0.1, ease }}
               >
-                <span className="animate-drift block" style={{ animationDelay: b.d }}>
+                <span
+                  className="animate-drift block"
+                  style={{ animationDelay: b.d }}
+                >
                   <Chunk kind={b.k} size={b.s} rotate={b.r} id={`hero-${i}`} />
                 </span>
               </motion.span>
