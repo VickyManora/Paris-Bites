@@ -289,9 +289,11 @@ export const visit = {
   cartAlt:
     "The Paris Bites dessert cart in Aundh, Pune — a white cart with a pink and white striped awning and a gold Paris Bites sign, lit up in the evening.",
   cartCaption: "Look for the pink striped awning",
-  mapsCta: "Get directions",
-  whatsappCta: "Message us on WhatsApp",
-  instagramCta: "Follow on Instagram",
+  /* CTA order is the hierarchy: directions is the job of this section,
+     WhatsApp is how people actually order, Instagram is a nice-to-have. */
+  mapsCta: "Get Directions",
+  whatsappCta: "WhatsApp Us",
+  instagramCta: "Follow Us on Instagram",
 };
 
 export const cart = {

@@ -1,8 +1,10 @@
 /**
- * Waffle product photography arrives at 1402x1122 (~2.1MB each). This caps the
- * width and recompresses; the frame is left exactly as shot — no crop, no
- * aspect change — so the 5:4 card slot in components/Waffles.tsx matches the
- * source ratio and nothing is ever cut off.
+ * Waffle product shots arrive at 1402x1122 with the waffle floating in a
+ * transparent frame. This trims that margin away and caps the width, so the
+ * waffle can overhang its card the same way the bowls do in the menu grid.
+ *
+ * Trim only removes fully transparent pixels — the waffle itself is never
+ * cropped and its aspect ratio is never touched.
  *
  *   node scripts/prep-waffles.mjs
  *
@@ -13,8 +15,8 @@
 import sharp from "sharp";
 import { mkdir } from "node:fs/promises";
 
-// cards render at ~440px wide on desktop, so 900 covers a 2x display
-const MAX_WIDTH = 900;
+// the overhanging waffle renders at ~240px, so 720 covers a 3x display
+const MAX_WIDTH = 720;
 const RAW = "assets/waffles-raw";
 const OUT = "public/waffles";
 
@@ -35,6 +37,7 @@ for (const [file, id] of Object.entries(SOURCES)) {
   const before = await sharp(src).metadata();
 
   const info = await sharp(src)
+    .trim({ threshold: 1 })
     .resize({ width: MAX_WIDTH, withoutEnlargement: true })
     .png({ compressionLevel: 9, effort: 10 })
     .toFile(`${OUT}/${id}.png`);

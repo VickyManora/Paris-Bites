@@ -13,7 +13,7 @@ export function Visit() {
   return (
     <section
       id="visit"
-      className="warm-glow grain relative isolate overflow-hidden bg-cream-50 py-24 sm:py-32 lg:pb-52"
+      className="warm-glow grain relative isolate overflow-hidden bg-cream-50 py-24 sm:py-32"
     >
       <div className="relative z-[1] mx-auto max-w-[1400px] px-5 sm:px-8">
         <Reveal className="mx-auto max-w-2xl text-center">
@@ -61,51 +61,66 @@ export function Visit() {
           </div>
         </div>
 
-        <Reveal delay={0.15} className="mt-10 flex flex-wrap justify-center gap-3">
-          <motion.a
-            href={links.maps}
-            whileTap={{ scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 480, damping: 26 }}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group relative overflow-hidden rounded-full bg-ink-900 px-8 py-4 text-sm font-medium text-cream-50 transition-all duration-500"
-          >
-            <span className="relative z-10">{visit.mapsCta}</span>
-            <span className="absolute inset-0 -translate-y-full bg-gold-600 transition-transform duration-500 group-hover:translate-y-0" />
-          </motion.a>
-          <motion.a
-            href={links.whatsapp}
-            whileTap={{ scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 480, damping: 26 }}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-full border border-ink-900/15 px-7 py-4 text-sm font-medium text-ink-700 transition-colors hover:border-gold-500 hover:text-gold-600"
-          >
-            {visit.whatsappCta}
-          </motion.a>
-          <motion.a
-            href={links.instagram}
-            whileTap={{ scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 480, damping: 26 }}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-full border border-ink-900/15 px-7 py-4 text-sm font-medium text-ink-700 transition-colors hover:border-gold-500 hover:text-gold-600"
-          >
-            {visit.instagramCta}
-          </motion.a>
-        </Reveal>
+        {/* Three tiers, not three equal buttons: directions is the job of
+            this section, WhatsApp is how people actually order, Instagram is
+            a nice-to-have. Choco is laid out beside them rather than
+            absolutely placed, so his sign always points at the primary CTA
+            and he can never land on top of it. */}
+        <div className="mt-12 flex flex-col items-center gap-6 lg:mt-14 lg:flex-row lg:justify-center lg:gap-10">
+          <Choco
+            pose="directions"
+            float="sway"
+            delay={0.2}
+            sizes="(max-width: 640px) 38vw, (max-width: 1024px) 22vw, 180px"
+            className="w-[38%] max-w-[148px] sm:w-[22%] lg:w-[13%] lg:max-w-[180px] lg:shrink-0"
+          />
+
+          <Reveal delay={0.15} className="w-full sm:w-auto">
+            <div className="flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center">
+              {/* primary */}
+              <motion.a
+                href={links.maps}
+                target="_blank"
+                rel="noopener noreferrer"
+                whileTap={{ scale: 0.96 }}
+                transition={{ type: "spring", stiffness: 480, damping: 26 }}
+                className="group relative inline-flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-full border border-transparent bg-ink-900 px-8 py-4 text-sm font-semibold text-cream-50 shadow-[0_16px_32px_-16px_rgba(53,28,13,0.65)] transition-all duration-500 sm:w-auto"
+              >
+                <PinIcon className="relative z-10" />
+                <span className="relative z-10">{visit.mapsCta}</span>
+                <span className="absolute inset-0 -translate-y-full bg-gold-600 transition-transform duration-500 group-hover:translate-y-0" />
+              </motion.a>
+
+              {/* secondary */}
+              <motion.a
+                href={links.whatsapp}
+                target="_blank"
+                rel="noopener noreferrer"
+                whileTap={{ scale: 0.96 }}
+                transition={{ type: "spring", stiffness: 480, damping: 26 }}
+                className="inline-flex w-full items-center justify-center gap-2.5 rounded-full border border-ink-900/12 bg-cream-50 px-7 py-4 text-sm font-medium text-ink-700 shadow-[var(--shadow-soft)] transition-colors duration-300 hover:border-gold-500 hover:text-gold-600 sm:w-auto"
+              >
+                <WhatsAppIcon />
+                {visit.whatsappCta}
+              </motion.a>
+
+              {/* tertiary — no fill, no border, so it reads as the quiet one */}
+              <motion.a
+                href={links.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                whileTap={{ scale: 0.96 }}
+                transition={{ type: "spring", stiffness: 480, damping: 26 }}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3.5 text-sm font-medium text-muted transition-colors duration-300 hover:bg-cream-200/70 hover:text-gold-600 sm:w-auto"
+              >
+                <InstagramIcon />
+                {visit.instagramCta}
+              </motion.a>
+            </div>
+          </Reveal>
+        </div>
       </div>
 
-      {/* the signboard reads "This Way" — it points toward the directions CTA.
-          On lg it stands in the section's own bottom padding, far left of the
-          centred CTA row, so it clears both the cards and the buttons. */}
-      <Choco
-        pose="directions"
-        float="sway"
-        delay={0.15}
-        sizes="(max-width: 640px) 42vw, (max-width: 1024px) 24vw, 190px"
-        className="relative z-[1] mx-auto mt-12 w-[42%] max-w-[156px] sm:w-[24%] lg:absolute lg:bottom-3 lg:left-[4%] lg:mx-0 lg:mt-0 lg:w-[13%] lg:max-w-[190px]"
-      />
     </section>
   );
 }
@@ -164,5 +179,60 @@ function DetailCard({
         />
       </div>
     </motion.div>
+  );
+}
+
+/* ── CTA icons ────────────────────────────────────────────
+   Inline SVG, matching the nav and cart icons: 18px, currentColor, stroked
+   where the site's own icons are stroked. WhatsApp is a brand glyph, so it
+   stays filled — that is how people recognise it.
+   ──────────────────────────────────────────────────────── */
+
+function PinIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        d="M12 21.2s6.6-5.9 6.6-10.6a6.6 6.6 0 1 0-13.2 0C5.4 15.3 12 21.2 12 21.2Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="10.3" r="2.5" fill="none" stroke="currentColor" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
+function WhatsAppIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" className={className} aria-hidden>
+      <path
+        fill="currentColor"
+        d="M12.04 2.2a9.75 9.75 0 0 0-8.3 14.85L2.2 22l5.1-1.5a9.75 9.75 0 1 0 4.74-18.3Zm0 1.72a8.03 8.03 0 1 1-4.2 14.87l-.3-.18-3.02.89.9-2.94-.2-.31a8.03 8.03 0 0 1 6.82-12.33Z"
+      />
+      <path
+        fill="currentColor"
+        d="M9.3 7.3c-.17-.4-.35-.4-.52-.41h-.44c-.15 0-.4.06-.6.28-.21.23-.79.77-.79 1.88 0 1.1.81 2.17.92 2.32.12.15 1.57 2.5 3.86 3.41 1.91.75 2.3.6 2.71.57.41-.04 1.34-.55 1.53-1.08.19-.53.19-.98.13-1.07-.06-.1-.21-.15-.44-.27-.23-.11-1.34-.66-1.55-.73-.2-.08-.36-.11-.51.11-.15.23-.58.74-.71.88-.13.15-.26.17-.49.06-.23-.12-.98-.36-1.86-1.15-.69-.61-1.15-1.36-1.28-1.59-.14-.22-.02-.35.1-.46.1-.1.23-.26.34-.4.11-.13.15-.23.23-.38.07-.15.04-.29-.02-.4-.06-.11-.5-1.23-.7-1.68Z"
+      />
+    </svg>
+  );
+}
+
+function InstagramIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" className={className} aria-hidden>
+      <rect
+        x="3.4"
+        y="3.4"
+        width="17.2"
+        height="17.2"
+        rx="5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+      />
+      <circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="1.7" />
+      <circle cx="17.1" cy="6.9" r="1.15" fill="currentColor" />
+    </svg>
   );
 }
