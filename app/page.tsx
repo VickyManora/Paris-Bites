@@ -1,5 +1,6 @@
 import { Nav } from "@/components/Nav";
 import { Hero } from "@/components/Hero";
+import { FreshFromTheCart } from "@/components/FreshFromTheCart";
 import { Why } from "@/components/Why";
 import { Menu } from "@/components/Menu";
 import { Waffles } from "@/components/Waffles";
@@ -13,6 +14,7 @@ export default function Home() {
       <Nav />
       <main>
         <Hero />
+        <FreshFromTheCart />
         <Why />
         <Menu />
         <Waffles />

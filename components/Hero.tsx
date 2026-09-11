@@ -15,6 +15,7 @@ import { Chunk } from "./art/Chunk";
 import { RisingLines, ease } from "./motion/Reveal";
 import { usePointerParallax } from "./motion/Tilt";
 import { Rating } from "./brand/Rating";
+import { CountUp } from "./motion/CountUp";
 
 const heroWaffle = wafflePhotos["waffle-biscoff-bliss"];
 
@@ -74,37 +75,45 @@ export function Hero() {
     <section
       id="home"
       ref={ref}
-      className="warm-glow grain relative isolate min-h-[100svh] overflow-hidden bg-cream-100 pt-32 pb-20 sm:pt-40 lg:flex lg:items-center lg:pt-36 lg:pb-12"
+      className="warm-glow grain relative isolate min-h-[100svh] overflow-hidden bg-cream-100 pt-28 pb-14 sm:pt-36 sm:pb-20 lg:flex lg:items-center lg:pt-36 lg:pb-12"
     >
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-56 bg-gradient-to-t from-cream-100 to-transparent" />
 
-      <div className="relative z-[1] mx-auto grid w-full max-w-[1400px] items-center gap-10 px-5 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:gap-4">
-        <motion.div style={{ y: copyY, opacity: fade }} className="max-w-xl">
+      <div className="relative z-[1] mx-auto grid w-full max-w-[1400px] items-center gap-5 px-5 sm:gap-10 sm:px-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:grid-rows-[auto_auto] lg:gap-x-4 lg:gap-y-0">
+        <motion.div
+          style={{ y: copyY, opacity: fade }}
+          className="max-w-xl lg:col-start-1 lg:row-start-1"
+        >
           <motion.div
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease }}
-            className="mb-7 flex flex-wrap items-center gap-2"
+            className="mb-7 flex flex-wrap items-center gap-2 sm:mb-7"
           >
             {/* the rating leads the row: it is the one badge a first-time
                 visitor can verify, and it comes from outside the site */}
             <Rating className="glass rounded-full px-4 py-2 text-xs text-ink-700" />
 
-            {hero.badges.map((b) => (
-              <span
-                key={b}
-                className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium text-ink-700"
-              >
-                <span className="relative flex size-1.5">
-                  <span className="absolute inline-flex size-full animate-ping rounded-full bg-gold-500 opacity-70" />
-                  <span className="relative inline-flex size-1.5 rounded-full bg-gold-500" />
+            {/* pills from sm up; on a phone the same two facts run as a single
+                muted line, so the rating and headline own the top of the screen */}
+            <span className="hidden sm:contents">
+              {hero.badges.map((b) => (
+                <span
+                  key={b}
+                  className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium text-ink-700"
+                >
+                  <span className="relative flex size-1.5">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-gold-500 opacity-70" />
+                    <span className="relative inline-flex size-1.5 rounded-full bg-gold-500" />
+                  </span>
+                  {b}
                 </span>
-                {b}
-              </span>
-            ))}
+              ))}
+            </span>
+
           </motion.div>
 
-          <h1 className="display text-[clamp(2.6rem,7.4vw,5rem)]">
+          <h1 className="display text-[clamp(2.7rem,7.4vw,5rem)]">
             <RisingLines lines={hero.headline} />
           </h1>
 
@@ -112,7 +121,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.5, ease }}
-            className="mt-7 max-w-[48ch] text-[0.975rem] leading-relaxed text-ink-500 sm:text-base"
+            className="mt-5 max-w-[44ch] text-[0.975rem] leading-relaxed text-ink-500 sm:mt-7 sm:max-w-[48ch] sm:text-base"
           >
             {hero.body}
           </motion.p>
@@ -121,7 +130,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.64, ease }}
-            className="mt-10 flex flex-wrap items-center gap-3"
+            className="mt-7 flex flex-wrap items-center gap-3 sm:mt-10"
           >
             <motion.a
               href="#menu"
@@ -143,29 +152,13 @@ export function Hero() {
               {hero.secondaryCta}
             </motion.a>
           </motion.div>
-
-          <motion.dl
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 1, delay: 0.88 }}
-            className="mt-14 flex flex-wrap gap-x-8 gap-y-6 border-t border-ink-900/10 pt-7 sm:gap-x-12"
-          >
-            {hero.stats.map((s) => (
-              <div key={s.label}>
-                <dt className="display text-2xl sm:text-3xl">{s.value}</dt>
-                <dd className="mt-1 text-xs tracking-wide text-muted">
-                  {s.label}
-                </dd>
-              </div>
-            ))}
-          </motion.dl>
         </motion.div>
 
         {/* ── art ── */}
         <div
           ref={artRef}
           {...pointerHandlers}
-          className="relative h-[300px] sm:h-[540px] lg:h-auto lg:aspect-[1.42] [perspective:1400px]"
+          className="relative h-[360px] sm:h-[540px] lg:h-auto lg:aspect-[1.42] lg:col-start-2 lg:row-start-1 lg:row-span-2 [perspective:1400px]"
         >
           <motion.div
             style={{ y: drizzleY }}
@@ -200,7 +193,7 @@ export function Hero() {
               initial={{ opacity: 0, y: 70, rotate: 5 }}
               animate={{ opacity: 1, y: 0, rotate: 3 }}
               transition={{ duration: 1.3, delay: 0.5, ease }}
-              className="absolute bottom-[6%] right-0 w-[62%] max-w-[400px] origin-bottom [transform-style:preserve-3d] sm:right-[1%] sm:w-[60%] lg:right-[1%] lg:w-[64%] lg:max-w-[470px]"
+              className="absolute bottom-[13%] right-0 w-[98%] max-w-[400px] origin-bottom sm:bottom-[6%] [transform-style:preserve-3d] sm:right-[1%] sm:w-[60%] lg:right-[1%] lg:w-[64%] lg:max-w-[470px]"
             >
               <motion.div style={{ x: backX, y: backY }}>
                 <Image
@@ -217,7 +210,7 @@ export function Hero() {
               initial={{ opacity: 0, y: 80, rotate: -6 }}
               animate={{ opacity: 1, y: 0, rotate: -3 }}
               transition={{ duration: 1.3, delay: 0.36, ease }}
-              className="absolute bottom-0 left-[27%] z-10 w-[47%] max-w-[330px] origin-bottom [transform-style:preserve-3d] sm:left-[27%] sm:w-[46%] lg:left-[4%] lg:w-[52%] lg:max-w-[380px]"
+              className="absolute bottom-0 left-[6%] z-10 w-[76%] max-w-[330px] origin-bottom [transform-style:preserve-3d] sm:left-[27%] sm:w-[46%] lg:left-[4%] lg:w-[52%] lg:max-w-[380px]"
             >
               <div className="[transform:translateZ(90px)] [transform-style:preserve-3d]">
                 <motion.div style={{ x: frontX, y: frontY }}>
@@ -299,6 +292,35 @@ export function Hero() {
             </motion.div>
           ))}
         </div>
+
+        <motion.dl
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 0.88 }}
+          className="hidden max-w-xl grid-cols-3 gap-x-4 border-t border-ink-900/10 pt-5 sm:grid sm:pt-6 sm:grid-cols-2 sm:gap-x-10 sm:gap-y-5 sm:pt-7 lg:col-start-1 lg:row-start-2 lg:mt-12 xl:flex xl:flex-wrap xl:gap-x-12 xl:gap-y-6"
+        >
+          {hero.stats.map((s, i) => (
+            /* three across on a phone: the 2x2 grid ran past the fold on a
+               16 Pro Max, so the fourth steps out below sm rather than being
+               removed — it returns from 640px up */
+            <div key={s.label} className={i === 3 ? "hidden sm:block" : undefined}>
+              <dt className="display text-2xl sm:text-3xl">
+                {"countUp" in s && typeof s.countUp === "number" ? (
+                  <>
+                    <CountUp to={s.countUp} />
+                    {/* whatever follows the digits, e.g. the "+" of 2500+ */}
+                    {s.value.replace(/^[\d,]+/, "")}
+                  </>
+                ) : (
+                  s.value
+                )}
+              </dt>
+              <dd className="mt-1 text-xs tracking-wide text-muted">
+                {s.label}
+              </dd>
+            </div>
+          ))}
+        </motion.dl>
       </div>
 
       <motion.div

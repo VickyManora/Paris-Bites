@@ -78,7 +78,7 @@ export function Footer() {
 
             <div>
               <p className="kicker mb-4">Opening hours</p>
-              <p className="text-sm text-ink-500">Open from 5 PM onwards</p>
+              <p className="text-sm text-ink-500">Open from 7 PM to 11 PM</p>
               <p className="mt-2 text-sm text-ink-500">Every day of the week</p>
               <p className="mt-4 text-xs text-muted">
                 Follow us for daily dessert updates

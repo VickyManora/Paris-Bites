@@ -60,7 +60,7 @@ export const nav = {
     { label: "Waffles", href: "#waffles" },
     { label: "Visit", href: "#visit" },
   ],
-  hours: "Open daily from 5 PM",
+  hours: "Open daily 7–11 PM",
 };
 
 export const hero = {
@@ -74,11 +74,32 @@ export const hero = {
   cta: "View menu",
   secondaryCta: "Visit us today",
   stats: [
-    { value: "2500+", label: "Customers served" },
-    { value: "5 PM", label: "Doors open" },
-    { value: "8", label: "Signature bowls" },
+    { value: "2500+", label: "Bowls served", countUp: 2500 },
+    { value: "7 PM", label: "Doors open" },
+    { value: "8", label: "Signature bowls", countUp: 8 },
     { value: "100%", label: "Made to order" },
   ],
+};
+
+/* ── Live activity ─────────────────────────────────────────
+   The counter is a SIMULATION — this project has no order
+   backend, so no sale is ever observed here (see
+   lib/live-activity.ts). The on-screen disclaimer was removed at
+   the owner's request — the figures are still simulated, so keep
+   the wording as "served" and never "sold".
+   ───────────────────────────────────────────────────────── */
+export const liveActivity = {
+  heading: "Live activity",
+  kicker: "Fresh from the cart",
+  closing: "Made fresh. Served warm. Gone quickly.",
+  servingTonight: "Serving tonight",
+  opening: "Opens at 7 PM",
+  ended: "Back tomorrow at 7 PM",
+  statusOpen: "Live",
+  statusBefore: "Opening soon",
+  statusClosed: "Service ended",
+  bowls: "Bowls served",
+  waffles: "Waffles served",
 };
 
 export const why = {
@@ -312,7 +333,7 @@ export const visit = {
     {
       title: "When",
       lines: [
-        "Open from 5 PM onwards",
+        "Open from 7 PM to 11 PM",
         "Every day of the week",
         "Fresh batches, limited quantity",
       ],
@@ -329,7 +350,7 @@ export const visit = {
   landmarkNote: "Just minutes from Nexus Westend Mall and The White House.",
   /** the one line someone reads out to a driver */
   address: "Near Nexus Westend Mall, Aundh, Pune",
-  hoursTitle: "Open from 5 PM onwards",
+  hoursTitle: "Open from 7 PM to 11 PM",
   hoursLines: ["Every day of the week", "Fresh batches, limited quantity"],
   /* closes the section — the invitation, not another set of facts */
   ctaBody:
@@ -342,7 +363,7 @@ export const visit = {
   /** three reasons to make the trip, each already true elsewhere on the page */
   highlights: [
     { icon: "route" as const, title: "Easy to reach", body: "Near Nexus Westend Mall & The White House" },
-    { icon: "clock" as const, title: "Open daily", body: "From 5 PM onwards" },
+    { icon: "clock" as const, title: "Open daily", body: "From 7 PM to 11 PM" },
     { icon: "heart" as const, title: "Freshly made", body: "Small batches, big happiness" },
   ],
   /* CTA order is the hierarchy: directions is the job of this section,

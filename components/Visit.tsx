@@ -30,112 +30,129 @@ export function Visit() {
       className="warm-glow grain relative isolate overflow-hidden bg-cream-50 pb-0 pt-20 sm:pt-24 lg:pt-28"
     >
       <div className="relative z-[1] mx-auto max-w-[1400px] px-5 sm:px-8">
-        <div className="grid items-stretch gap-8 lg:grid-cols-[0.88fr_1.12fr] lg:gap-10">
-          {/* ── the argument ── */}
-          <Reveal className="flex flex-col lg:justify-center">
-            <div>
-              <p className="kicker mb-4">{visit.kicker}</p>
-              <h2 className="display text-[clamp(2rem,4.6vw,3.2rem)]">
-                <RisingLines lines={visit.heading} delay={0} />
-              </h2>
+        {/* The cart photo is the panel, not a card beside one: the copy sits
+            on it over a scrim, and the map plus the two ways to act own the
+            right. The photo is dark (mean luminance 100/255) and busy, so it
+            carries a real scrim rather than a light fade — fading it enough
+            for chocolate-brown text would have left a grey smudge instead of
+            a recognisable cart. */}
+        <div className="grid items-stretch gap-5 lg:grid-cols-[0.86fr_1.14fr] lg:gap-6">
+          <Reveal className="h-full">
+            <div className="relative h-full overflow-hidden rounded-3xl shadow-[var(--shadow-lift)]">
+              <Image
+                src={cartImage}
+                alt={visit.cartAlt}
+                fill
+                sizes="(max-width: 1024px) 92vw, 700px"
+                placeholder="blur"
+                className="object-cover object-center"
+              />
 
-              {/* a hairline and a single gold lozenge — the Parisian note,
-                  kept to almost nothing so it reads as craft, not clutter */}
-              <span aria-hidden className="mt-6 flex items-center gap-2.5">
-                <span className="h-px w-8 bg-gradient-to-r from-transparent to-gold-500/60" />
-                <span className="size-1.5 rotate-45 border border-gold-500/70" />
-                <span className="h-px w-16 bg-gradient-to-r from-gold-500/60 to-transparent" />
-              </span>
+              {/* the shade: deepest at the foot where the copy sits, opening
+                  up toward the awning so the cart stays readable */}
+              <div
+                aria-hidden
+                className="absolute inset-0 bg-gradient-to-tr from-choc-700/92 via-ink-900/72 to-ink-900/38"
+              />
+              <div
+                aria-hidden
+                className="absolute inset-0 bg-gradient-to-t from-ink-900/55 via-transparent to-transparent"
+              />
 
-              <p className="mt-5 max-w-[46ch] text-sm leading-relaxed text-ink-500 sm:text-base">
-                {visit.body}
-              </p>
-            </div>
-
-            <div className="mt-7 space-y-4">
-              <p className="flex items-start gap-2.5 text-base font-medium text-ink-900">
-                <PinIcon className="mt-0.5 shrink-0 text-gold-600" />
-                {visit.address}
-              </p>
-              <p className="max-w-[38ch] text-sm leading-relaxed text-muted">
-                {visit.landmarkNote}
-              </p>
-            </div>
-
-            {/* rating and hours as quiet inline blocks rather than big cards */}
-            <div className="mt-6 space-y-3">
-              <div className="inline-flex rounded-2xl border border-ink-900/8 bg-cream-50/80 px-4 py-3 shadow-[var(--shadow-soft)]">
-                <Rating starSize={14} className="text-sm text-ink-700" />
-              </div>
-
-              <div className="flex items-start gap-3 rounded-2xl border border-ink-900/8 bg-cream-50/80 px-4 py-3.5 shadow-[var(--shadow-soft)]">
-                <ClockIcon className="mt-0.5 shrink-0 text-gold-600" />
+              <div className="relative flex h-full flex-col justify-between gap-8 p-7 sm:p-9 lg:p-11">
                 <div>
-                  <p className="text-sm font-semibold text-ink-900">{visit.hoursTitle}</p>
-                  {visit.hoursLines.map((line) => (
-                    <p key={line} className="mt-0.5 text-[0.8125rem] text-ink-500">
-                      {line}
+                  <p className="kicker mb-4 !text-cream-200/75">{visit.kicker}</p>
+                  <h2 className="display text-[clamp(2rem,4.4vw,3rem)] !text-cream-50 [&_.accent]:text-gold-400">
+                    <RisingLines lines={visit.heading} delay={0} />
+                  </h2>
+
+                  <span aria-hidden className="mt-5 flex items-center gap-2.5">
+                    <span className="h-px w-8 bg-gradient-to-r from-transparent to-gold-400/70" />
+                    <span className="size-1.5 rotate-45 border border-gold-400/80" />
+                    <span className="h-px w-16 bg-gradient-to-r from-gold-400/70 to-transparent" />
+                  </span>
+
+                  <p className="mt-5 max-w-[44ch] text-sm leading-relaxed text-cream-200/85 sm:text-base">
+                    {visit.body}
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <p className="flex items-start gap-2.5 text-base font-semibold text-cream-50">
+                      <PinIcon className="mt-0.5 shrink-0 text-gold-400" />
+                      {visit.address}
                     </p>
-                  ))}
+                    <p className="mt-2 max-w-[40ch] text-sm leading-relaxed text-cream-200/70">
+                      {visit.landmarkNote}
+                    </p>
+                  </div>
+
+                  {/* frosted pills: the photo behind them is dark and busy, so
+                      these keep the site's own light chrome rather than
+                      restating every colour for a dark ground */}
+                  <div className="flex flex-wrap items-stretch gap-3">
+                    <span className="glass inline-flex items-center rounded-2xl px-4 py-2.5">
+                      <Rating starSize={14} className="text-sm text-ink-700" />
+                    </span>
+
+                    <span className="glass inline-flex items-start gap-2.5 rounded-2xl px-4 py-2.5">
+                      <ClockIcon className="mt-0.5 shrink-0 text-gold-600" />
+                      <span>
+                        <span className="block text-sm font-semibold text-ink-900">
+                          {visit.hoursTitle}
+                        </span>
+                        {visit.hoursLines.map((line) => (
+                          <span key={line} className="block text-[0.8125rem] text-ink-500">
+                            {line}
+                          </span>
+                        ))}
+                      </span>
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="mt-7 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
-              <motion.a
-                href={links.maps}
-                target="_blank"
-                rel="noopener noreferrer"
-                whileTap={{ scale: 0.96 }}
-                transition={{ type: "spring", stiffness: 480, damping: 26 }}
-                className="group relative inline-flex items-center justify-center gap-2.5 overflow-hidden rounded-full border border-transparent bg-ink-900 px-7 py-4 text-sm font-semibold text-cream-50 shadow-[0_16px_32px_-16px_rgba(53,28,13,0.65)] transition-all duration-500"
-              >
-                <PinIcon className="relative z-10" />
-                <span className="relative z-10">{visit.mapsCta}</span>
-                <span className="absolute inset-0 -translate-y-full bg-gold-600 transition-transform duration-500 group-hover:translate-y-0" />
-              </motion.a>
-
-              <motion.a
-                href={links.whatsapp}
-                target="_blank"
-                rel="noopener noreferrer"
-                whileTap={{ scale: 0.96 }}
-                transition={{ type: "spring", stiffness: 480, damping: 26 }}
-                className="inline-flex items-center justify-center gap-2.5 rounded-full border border-ink-900/12 bg-cream-50 px-6 py-4 text-sm font-medium text-ink-700 shadow-[var(--shadow-soft)] transition-colors duration-300 hover:border-gold-500 hover:text-gold-600"
-              >
-                <WhatsAppIcon />
-                {visit.whatsappCta}
-              </motion.a>
             </div>
           </Reveal>
 
-          {/* ── the two pictures ── */}
+          {/* ── where it is, and how to get there ── */}
           <div className="flex flex-col gap-5">
-            <Reveal delay={0.1}>
+            <Reveal delay={0.1} className="flex min-h-0 lg:flex-1">
               <MapCard />
             </Reveal>
 
-            <Reveal delay={0.16} className="flex-1">
-              <figure className="card group relative h-full overflow-hidden rounded-2xl">
-                <div className="relative h-full min-h-[230px] w-full overflow-hidden sm:min-h-[260px] lg:min-h-[300px]">
-                  <Image
-                    src={cartImage}
-                    alt={visit.cartAlt}
-                    fill
-                    sizes="(max-width: 1024px) 92vw, 780px"
-                    placeholder="blur"
-                    className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.04]"
-                  />
-                  <div
+            <Reveal delay={0.16}>
+              <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
+                <motion.a
+                  href={links.maps}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileTap={{ scale: 0.96 }}
+                  transition={{ type: "spring", stiffness: 480, damping: 26 }}
+                  className="group relative inline-flex flex-1 items-center justify-center gap-2.5 overflow-hidden rounded-full border border-transparent bg-ink-900 px-7 py-4 text-sm font-semibold text-cream-50 shadow-[0_16px_32px_-16px_rgba(53,28,13,0.65)] transition-all duration-500"
+                >
+                  <span className="relative z-10 flex items-center gap-2.5 whitespace-nowrap">
+                    <PinIcon />
+                    {visit.mapsCta}
+                  </span>
+                  <span
                     aria-hidden
-                    className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-ink-900/55 to-transparent"
+                    className="absolute inset-0 -translate-y-full bg-gold-600 transition-transform duration-500 group-hover:translate-y-0"
                   />
-                  <figcaption className="absolute bottom-4 left-5 right-5 flex items-center gap-2 text-sm font-medium text-cream-50 drop-shadow-[0_1px_6px_rgba(36,23,19,0.7)]">
-                    <span aria-hidden className="h-px w-6 bg-cream-50/70" />
-                    {visit.cartCaption}
-                  </figcaption>
-                </div>
-              </figure>
+                </motion.a>
+
+                <motion.a
+                  href={links.whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileTap={{ scale: 0.96 }}
+                  transition={{ type: "spring", stiffness: 480, damping: 26 }}
+                  className="inline-flex flex-1 items-center justify-center gap-2.5 whitespace-nowrap rounded-full border border-ink-900/12 bg-cream-50 px-6 py-4 text-sm font-medium text-ink-700 shadow-[var(--shadow-soft)] transition-colors duration-300 hover:border-gold-500 hover:text-gold-600"
+                >
+                  <WhatsAppIcon />
+                  {visit.whatsappCta}
+                </motion.a>
+              </div>
             </Reveal>
           </div>
         </div>
@@ -173,7 +190,7 @@ function ComeFindUs() {
               takes the middle, the reasons close the right. A two-column
               split left a ~290px void in the centre because the message is
               narrower than an even track. */}
-          <div className="grid items-center gap-10 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-14">
+          <div className="grid items-center gap-10 lg:grid-cols-[auto_minmax(0,1fr)] lg:gap-12 xl:grid-cols-[auto_minmax(0,1fr)_minmax(0,30rem)]">
             {/* the warmth behind the mascot and the headline — one soft wash */}
             <div
               aria-hidden
@@ -188,8 +205,8 @@ function ComeFindUs() {
               pose="directions"
               float="sway"
               delay={0.1}
-              sizes="(max-width: 640px) 46vw, (max-width: 1024px) 30vw, 216px"
-              className="relative mx-auto w-[46%] max-w-[168px] sm:w-[30%] sm:max-w-[190px] lg:mx-0 lg:w-[216px] lg:max-w-none lg:shrink-0"
+              sizes="(max-width: 640px) 52vw, (max-width: 1024px) 32vw, 260px"
+              className="relative mx-auto w-[52%] max-w-[196px] sm:w-[32%] sm:max-w-[220px] lg:mx-0 lg:-mb-4 lg:w-[260px] lg:max-w-none lg:shrink-0"
             />
 
             <div className="relative text-center lg:text-left">
@@ -226,21 +243,21 @@ function ComeFindUs() {
             </div>
 
             {/* the reasons, as an editorial list rather than three cards */}
-            <Reveal delay={0.12} className="relative w-full lg:w-[24rem]">
-              <ol className="divide-y divide-ink-900/8">
+            <Reveal delay={0.12} className="relative w-full lg:col-span-2 xl:col-span-1">
+              <ol className="grid gap-6 sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-ink-900/8">
                 {visit.highlights.map((h, i) => (
-                  <li key={h.title} className="flex items-start gap-4 py-5 first:pt-0 last:pb-0">
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-blush-100 text-gold-600">
+                  <li
+                    key={h.title}
+                    className="flex items-start gap-4 sm:flex-col sm:items-start sm:gap-0 sm:px-5 sm:first:pl-0 sm:last:pr-0"
+                  >
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-blush-100 text-gold-600 sm:mb-3.5">
                       <HighlightIcon name={h.icon} />
                     </span>
                     <div className="min-w-0">
-                      <p className="flex items-baseline gap-2.5">
-                        <span className="font-sans text-[0.7rem] font-semibold tracking-[0.18em] text-gold-600">
-                          {String(i + 1).padStart(2, "0")}
-                        </span>
-                        <span aria-hidden className="h-px w-4 bg-gold-500/40" />
-                        <span className="display text-base">{h.title}</span>
+                      <p className="font-sans text-[0.7rem] font-semibold tracking-[0.18em] text-gold-600">
+                        {String(i + 1).padStart(2, "0")}
                       </p>
+                      <p className="display mt-1 text-base">{h.title}</p>
                       <p className="mt-1.5 text-[0.8125rem] leading-relaxed text-ink-500">
                         {h.body}
                       </p>
@@ -277,15 +294,15 @@ function MapCard() {
       aria-label={`${visit.mapCta} — ${visit.address}`}
       whileTap={{ scale: 0.995 }}
       transition={{ type: "spring", stiffness: 320, damping: 28 }}
-      className="card group relative -mx-5 block overflow-hidden rounded-2xl transition-shadow duration-500 hover:shadow-[var(--shadow-lift)] sm:mx-0"
+      className="card group relative -mx-5 block w-full overflow-hidden rounded-2xl transition-shadow duration-500 hover:shadow-[var(--shadow-lift)] sm:mx-0 lg:h-full"
     >
-      <div className="relative aspect-[1648/954] w-full overflow-hidden">
+      <div className="relative aspect-[1648/954] w-full overflow-hidden bg-blush-100/45 lg:h-full lg:aspect-auto lg:min-h-[var(--map-min)]" style={{ ["--map-min" as string]: "260px" }}>
         <Image
           src={mapImage}
           alt={visit.mapAlt}
           fill
           sizes="(max-width: 1024px) 100vw, 780px"
-          className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+          className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03] lg:object-contain"
         />
         <span
           aria-hidden

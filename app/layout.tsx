@@ -12,7 +12,7 @@ import { brand } from "@/lib/content";
 import { CartProvider } from "@/components/cart/CartContext";
 
 const description =
-  "Handcrafted chocolate dessert bowls and waffles, made fresh to order at the Paris Bites dessert cart in Aundh, Pune. Open daily from 5 PM.";
+  "Handcrafted chocolate dessert bowls and waffles, made fresh to order at the Paris Bites dessert cart in Aundh, Pune. Open daily from 7 PM to 11 PM.";
 
 /* Link previews need ABSOLUTE image URLs — WhatsApp, Instagram and X all
    fetch og:image on their own servers, where a relative path means nothing.

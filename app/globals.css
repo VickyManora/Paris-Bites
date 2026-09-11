@@ -21,6 +21,12 @@
   --gold-500: #c79a4b;
   --gold-600: #a97d33;
 
+  /* the only green in the palette: the live-service indicator. Muted and
+     warm so it sits beside gold rather than reading as a status LED. */
+  --fresh-100: #e9f2ea;
+  --fresh-500: #4f9a68;
+  --fresh-600: #2f6b45;
+
   --choc-500: #6b3f22;
   --choc-600: #4f2c16;
   --choc-700: #351c0d;
@@ -45,6 +51,9 @@
   --color-gold-400: var(--gold-400);
   --color-gold-500: var(--gold-500);
   --color-gold-600: var(--gold-600);
+  --color-fresh-100: var(--fresh-100);
+  --color-fresh-500: var(--fresh-500);
+  --color-fresh-600: var(--fresh-600);
   --color-choc-500: var(--choc-500);
   --color-choc-600: var(--choc-600);
   --color-choc-700: var(--choc-700);
