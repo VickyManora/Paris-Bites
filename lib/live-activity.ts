@@ -69,6 +69,59 @@ function baselineFor(day: number): { bowls: number; waffles: number } {
   return { bowls, waffles };
 }
 
+/**
+ * The next moment the cart opens: tonight at 7 PM if that is still ahead,
+ * otherwise 7 PM tomorrow. Built from the local date so it follows the
+ * viewer's own clock and survives a day boundary — at 11:30 PM the answer
+ * is tomorrow evening, not a negative countdown to a time that has passed.
+ */
+export function nextOpening(now: Date): Date {
+  const open = new Date(now);
+  open.setHours(SERVICE_OPEN_HOUR, 0, 0, 0);
+  if (now >= open) open.setDate(open.getDate() + 1);
+  return open;
+}
+
+/**
+ * Time left until the cart opens, already split for display. `total` is
+ * milliseconds, and is 0 while service is running — the caller shows the
+ * live status then, not a countdown.
+ */
+export function timeUntilOpen(now: Date): {
+  total: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+} {
+  if (phaseAt(now) === "open") return { total: 0, hours: 0, minutes: 0, seconds: 0 };
+
+  const total = Math.max(0, nextOpening(now).getTime() - now.getTime());
+  const seconds = Math.floor(total / 1000);
+
+  return {
+    total,
+    hours: Math.floor(seconds / 3600),
+    minutes: Math.floor((seconds % 3600) / 60),
+    seconds: seconds % 60,
+  };
+}
+
+/** "2h 14m 09s", or "14m 09s" once the hours run out */
+export function formatCountdown({
+  hours,
+  minutes,
+  seconds,
+}: {
+  hours: number;
+  minutes: number;
+  seconds: number;
+}): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return hours > 0
+    ? `${hours}h ${pad(minutes)}m ${pad(seconds)}s`
+    : `${minutes}m ${pad(seconds)}s`;
+}
+
 export function phaseAt(now: Date): ServicePhase {
   const h = now.getHours();
   if (h < SERVICE_OPEN_HOUR) return "before";

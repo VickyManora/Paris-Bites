@@ -7,6 +7,7 @@ import { BowlArt } from "./art/BowlArt";
 import { Reveal, RisingLines, Stagger, riseItem } from "./motion/Reveal";
 import { Choco } from "./art/Choco";
 import { ProductCard } from "./product/ProductCard";
+import { BiteClubStrip } from "./loyalty/BiteClubStrip";
 
 export function Menu() {
   return (
@@ -24,19 +25,19 @@ export function Menu() {
           </Reveal>
           <Reveal delay={0.12} className="lg:pb-2">
             <p className="max-w-[46ch] text-ink-500">{menu.body}</p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              <span className="rounded-full bg-ink-900 px-4 py-2 text-xs font-medium text-cream-50">
-                {menu.special}
-              </span>
-              <span className="rounded-full border border-gold-500/40 bg-blush-100 px-4 py-2 text-xs font-medium text-gold-600">
-                {menu.firstTime}
-              </span>
-            </div>
+
           </Reveal>
         </div>
 
+        {/* Bite Club sits between the menu's introduction and its prices:
+            the rewards are the reason to order here rather than elsewhere, so
+            they belong before the first bowl, not after the last. */}
+        <Reveal delay={0.08}>
+          <BiteClubStrip />
+        </Reveal>
+
         {menu.categories.map((category, ci) => (
-          <div key={category.id} className="mt-16 lg:mt-20">
+          <div key={category.id} id={category.id} className="mt-16 scroll-mt-28 lg:mt-20">
             <Reveal className="flex flex-wrap items-end justify-between gap-4 border-b border-ink-900/10 pb-5">
               <div>
                 <h3 className="display text-xl sm:text-2xl">

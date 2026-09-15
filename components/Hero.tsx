@@ -14,7 +14,7 @@ import { BowlArt } from "./art/BowlArt";
 import { Chunk } from "./art/Chunk";
 import { RisingLines, ease } from "./motion/Reveal";
 import { usePointerParallax } from "./motion/Tilt";
-import { Rating } from "./brand/Rating";
+import { RewardTicket } from "./loyalty/RewardTicket";
 import { CountUp } from "./motion/CountUp";
 
 const heroWaffle = wafflePhotos["waffle-biscoff-bliss"];
@@ -84,34 +84,12 @@ export function Hero() {
           style={{ y: copyY, opacity: fade }}
           className="max-w-xl lg:col-start-1 lg:row-start-1"
         >
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease }}
-            className="mb-7 flex flex-wrap items-center gap-2 sm:mb-7"
-          >
-            {/* the rating leads the row: it is the one badge a first-time
-                visitor can verify, and it comes from outside the site */}
-            <Rating className="glass rounded-full px-4 py-2 text-xs text-ink-700" />
-
-            {/* pills from sm up; on a phone the same two facts run as a single
-                muted line, so the rating and headline own the top of the screen */}
-            <span className="hidden sm:contents">
-              {hero.badges.map((b) => (
-                <span
-                  key={b}
-                  className="glass inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium text-ink-700"
-                >
-                  <span className="relative flex size-1.5">
-                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-gold-500 opacity-70" />
-                    <span className="relative inline-flex size-1.5 rounded-full bg-gold-500" />
-                  </span>
-                  {b}
-                </span>
-              ))}
-            </span>
-
-          </motion.div>
+          {/* The one thing on the first screen that is about this customer
+              rather than about the shop: the reward they have already earned,
+              and a single tap to go and spend it. Above the headline, because
+              money already banked is a better reason to keep reading than a
+              headline is. */}
+          <RewardTicket className="mb-6 sm:mb-7" />
 
           <h1 className="display text-[clamp(2.7rem,7.4vw,5rem)]">
             <RisingLines lines={hero.headline} />

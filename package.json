@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "tsx pricing.test.mts && tsx loyalty.test.mts",
+    "test:pricing": "tsx pricing.test.mts",
+    "test:loyalty": "tsx loyalty.test.mts",
+    "db:setup": "psql \"$DATABASE_URL\" -f lib/db/schema.sql",
+    "db:reset": "psql \"$DATABASE_URL\" -f lib/db/reset.sql"
   },
   "dependencies": {
     "@fontsource/manrope": "^5.3.0",
@@ -14,10 +19,13 @@
     "@fontsource/poppins": "^5.3.0",
     "motion": "^13.2.0",
     "next": "16.3.4",
+    "postgres": "^3.4.9",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@electric-sql/pglite-socket": "^0.2.11",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -25,6 +33,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.4",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   }
 }

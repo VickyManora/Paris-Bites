@@ -1,0 +1,717 @@
+/**
+ * Bite Club — the whole system, against a real Postgres.
+ *
+ *   npm run test:loyalty
+ *
+ * PGlite runs the actual schema.sql in-process, so these tests exercise the
+ * real transactions, the real unique indexes and the real conditional
+ * updates. A mocked repository would pass while production raced itself.
+ *
+ * Covers the eighteen cases in the brief, plus the ones that bite in
+ * practice: replayed confirmations, concurrent redemption, price tampering
+ * and a reversal after a reward has already been eaten.
+ */
+import { readFileSync } from "node:fs";
+import { PGlite } from "@electric-sql/pglite";
+
+import { MILESTONES, MINI_BOWL, biteClub, eligibleProducts } from "./lib/loyalty/config";
+import { heroTicket } from "./lib/content";
+import {
+  canClaimWelcome,
+  completionMessage,
+  earnedTypes,
+  isJourneyComplete,
+  journeyView,
+  nextReward,
+  redeemableReward,
+  validateRedemption,
+} from "./lib/loyalty/engine";
+import { quote } from "./lib/loyalty/quote";
+import { ticketView } from "./lib/loyalty/ticket";
+import type { LoyaltySnapshot } from "./lib/loyalty/service-types";
+import type { Db } from "./lib/db/adapter";
+import {
+  claimWelcomeReward,
+  completeOrder,
+  createOrder,
+  customerOrders,
+  loyaltyState,
+  normalisePhone,
+  reverseOrder,
+  upsertCustomer,
+} from "./lib/db/repo";
+
+let pass = 0;
+let fail = 0;
+
+function check(label: string, ok: boolean, detail = "") {
+  if (ok) pass++;
+  else fail++;
+  console.log(`${ok ? "PASS" : "FAIL"}  ${label}${detail ? `\n        ${detail}` : ""}`);
+}
+
+/* ── the embedded database, wired to the same adapter the app uses ── */
+const pg = new PGlite();
+await pg.exec(readFileSync("lib/db/schema.sql", "utf8"));
+
+const db: Db = {
+  async query<T>(text: string, params: unknown[] = []) {
+    const res = await pg.query(text, params as never[]);
+    return res.rows as T[];
+  },
+  async tx<T>(fn: (db: Db) => Promise<T>) {
+    return (await pg.transaction(async (t) => {
+      const scoped: Db = {
+        async query<T2>(text: string, params: unknown[] = []) {
+          const res = await t.query(text, params as never[]);
+          return res.rows as T2[];
+        },
+        tx: (inner) => inner(scoped), // already inside one
+      };
+      return fn(scoped);
+    })) as T;
+  },
+};
+
+/** place an order and confirm it, the way staff would */
+async function orderAndComplete(
+  customerId: string,
+  items: { id: string; qty: number }[],
+  rewardId?: string,
+  productId?: string,
+) {
+  const state = await loyaltyState(db, customerId);
+  const reward = rewardId
+    ? { type: state.rewards.find((r) => r.id === rewardId)!.type, productId }
+    : null;
+  const q = quote({ items, reward });
+
+  const created = await createOrder(db, {
+    customerId,
+    items: q.lines.map((l) => ({ id: l.bowl.id, qty: l.qty, price: l.bowl.price })),
+    giftProductId: q.giftLine?.id ?? null,
+    subtotal: q.comboTotal,
+    discount: q.reward?.amount ?? 0,
+    total: q.total,
+    rewardId,
+  });
+  if ("error" in created) throw new Error(created.error);
+
+  const done = await completeOrder(db, created.order.id);
+  // `done.order` is the row after completion; keep that one
+  return { ...done, placed: created.order };
+}
+
+console.log("── identity ──");
+check("phone normalises to one identity",
+  normalisePhone("+91 74473 60809") === "917447360809" &&
+  normalisePhone("07447360809") === "917447360809" &&
+  normalisePhone("7447360809") === "917447360809",
+);
+check("junk phone rejected", normalisePhone("12") === null);
+
+const alice = await upsertCustomer(db, { phone: "7447360801", name: "Alice" });
+check("customer created with a loyalty account", !!alice.id);
+
+const again = await upsertCustomer(db, { phone: "+91 74473 60801", name: "Alice" });
+check(
+  "15. same number on another browser is the same account",
+  again.id === alice.id,
+  `${alice.id} === ${again.id}`,
+);
+
+console.log("\n── the journey, one Bite at a time ──");
+
+// 1. new customer
+let state = await loyaltyState(db, alice.id);
+check("1. new customer has no rewards yet", state.completedOrders === 0 && state.rewards.length === 0);
+/* The 1st Bite's 20% is the welcome gift: it is in hand at zero orders, so
+   what lies AHEAD is the 2nd Bite's, two orders out. */
+check("   the reward ahead of them is the 2nd Bite's, two orders out",
+  nextReward(0)?.milestone.n === 2 && nextReward(0)?.ordersAway === 2,
+  `got milestone ${nextReward(0)?.milestone.n}, ${nextReward(0)?.ordersAway} away`,
+);
+check("   the welcome gift is owed at zero orders",
+  earnedTypes(0).includes("ORDER_1_DISCOUNT_20") && earnedTypes(0).length === 1,
+);
+check("   but no reward ROW exists until one is spent or a Bite completes",
+  redeemableReward(state) === null && state.rewards.length === 0,
+);
+
+// 2. one completed order → the 20% is earned
+let r = await orderAndComplete(alice.id, [{ id: "death-by-chocolate", qty: 1 }]);
+check("2. after 1 order, 20% reward is available",
+  r.state.completedOrders === 1 &&
+  r.state.rewards.filter((x) => x.status === "available").length === 1 &&
+  r.state.rewards[0].type === "ORDER_1_DISCOUNT_20",
+);
+check("   completion copy names the Bite", completionMessage(1).headline === "1st Bite complete!");
+
+// the 20% is spent on the SECOND order, which itself earns the next reward
+const reward1 = r.state.rewards.find((x) => x.status === "available")!;
+r = await orderAndComplete(alice.id, [{ id: "oreo-licious", qty: 1 }], reward1.id);
+check("3. an order can spend a reward AND count as a Bite",
+  r.state.completedOrders === 2 &&
+  r.state.rewards.find((x) => x.id === reward1.id)?.status === "redeemed" &&
+  r.state.rewards.some((x) => x.type === "ORDER_2_DISCOUNT_20" && x.status === "available"),
+);
+
+// 3rd order earns the ₹99 signature reward
+const reward2 = r.state.rewards.find((x) => x.type === "ORDER_2_DISCOUNT_20")!;
+r = await orderAndComplete(alice.id, [{ id: "kitkat-break", qty: 1 }], reward2.id);
+check("4. after 3 orders the ₹99 Signature Bowl is unlocked",
+  r.state.completedOrders === 3 &&
+  r.state.rewards.some((x) => x.type === "ORDER_3_SIGNATURE_BOWL_99" && x.status === "available"),
+);
+
+console.log("\n── the ₹99 signature reward ──");
+const r99 = (await loyaltyState(db, alice.id)).rewards.find(
+  (x) => x.type === "ORDER_3_SIGNATURE_BOWL_99",
+)!;
+state = await loyaltyState(db, alice.id);
+
+check("17. ineligible product rejected for the ₹99 reward",
+  validateRedemption({
+    state, rewardId: r99.id, productId: "nutella-bliss", cartProductIds: ["nutella-bliss"],
+  }).ok === false,
+  "Nutella Bliss is a Premium bowl, not a Signature bowl",
+);
+check("   eligible signature bowl accepted",
+  validateRedemption({
+    state, rewardId: r99.id, productId: "kitkat-break", cartProductIds: ["kitkat-break"],
+  }).ok === true,
+);
+check("   the reward will not price a bowl that is not in the cart",
+  validateRedemption({
+    state, rewardId: r99.id, productId: "kitkat-break", cartProductIds: ["tiramisu"],
+  }).ok === false,
+);
+
+const q99 = quote({
+  items: [{ id: "kitkat-break", qty: 1 }],
+  reward: { type: "ORDER_3_SIGNATURE_BOWL_99", productId: "kitkat-break" },
+});
+check("   ₹169 bowl costs ₹99 with the reward", q99.total === 99, `total ₹${q99.total}`);
+
+// 4th order: no reward
+r = await orderAndComplete(alice.id, [{ id: "kitkat-break", qty: 1 }], r99.id, "kitkat-break");
+check("5. 4th Bite has no reward of its own",
+  r.state.completedOrders === 4 &&
+  !r.state.rewards.some((x) => x.milestone === 4),
+);
+check("   but the copy still celebrates it", completionMessage(4).headline.includes("4th Bite"));
+
+// 5th: free mini bowl
+r = await orderAndComplete(alice.id, [{ id: "tiramisu", qty: 1 }]);
+check("6. after 5 orders the FREE Mini Bowl is unlocked",
+  r.state.completedOrders === 5 &&
+  r.state.rewards.some((x) => x.type === "ORDER_5_FREE_MINI_BOWL" && x.status === "available"),
+);
+
+// 6th: free bowl
+const mini = (await loyaltyState(db, alice.id)).rewards.find(
+  (x) => x.type === "ORDER_5_FREE_MINI_BOWL",
+)!;
+r = await orderAndComplete(alice.id, [{ id: "nutella-bliss", qty: 1 }], mini.id, MINI_BOWL.id);
+check("7. after 6 orders the FREE Bowl is unlocked, journey complete",
+  r.state.completedOrders === 6 &&
+  r.state.rewards.some((x) => x.type === "ORDER_6_FREE_BOWL" && x.status === "available"),
+);
+check("   the mini bowl rode along free", r.order.gift_product_id === MINI_BOWL.id);
+check("   6th Bite copy is the VIP moment", completionMessage(6).headline.includes("👑"));
+
+const view = journeyView(await loyaltyState(db, alice.id));
+check("   all six bites read as completed", view.every((m) => m.status === "completed"));
+
+console.log("\n── free bowl ──");
+const freeBowl = (await loyaltyState(db, alice.id)).rewards.find(
+  (x) => x.type === "ORDER_6_FREE_BOWL",
+)!;
+const qFree = quote({
+  items: [{ id: "oreo-licious", qty: 1 }],
+  reward: { type: "ORDER_6_FREE_BOWL", productId: "tiramisu" },
+});
+check("   a free bowl is a gift line, not a priced one",
+  qFree.giftLine?.id === "tiramisu" && qFree.lines.length === 1,
+);
+check("   eligible free-bowl list is bowls only, no waffles",
+  eligibleProducts("ORDER_6_FREE_BOWL").every((p) => !p.id.startsWith("waffle")),
+);
+
+// 18. free bowl used twice
+await orderAndComplete(alice.id, [{ id: "oreo-licious", qty: 1 }], freeBowl.id, "tiramisu");
+let secondAttempt: string | null = null;
+try {
+  await orderAndComplete(alice.id, [{ id: "oreo-licious", qty: 1 }], freeBowl.id, "tiramisu");
+} catch (e) {
+  secondAttempt = (e as Error).message;
+}
+check("18. free bowl cannot be spent twice", secondAttempt !== null, secondAttempt ?? "");
+
+console.log("\n── order rows ──");
+{
+  const [row] = await db.query<{ items: unknown }>(
+    `select items from orders order by created_at desc limit 1`,
+  );
+  check(
+    "order items round-trip as an array, not a JSON string",
+    Array.isArray(row.items),
+    `got ${typeof row.items}`,
+  );
+
+  const orders = await customerOrders(db, alice.id, 3);
+  check(
+    "   and every order the repo hands out has usable items",
+    orders.every((o) => Array.isArray(o.items) && o.items.every((i) => typeof i.id === "string")),
+  );
+}
+
+console.log("\n── abuse ──");
+const bob = await upsertCustomer(db, { phone: "7447360802", name: "Bob" });
+
+// 13/14. tampering
+const tampered = quote({
+  items: [{ id: "death-by-chocolate", qty: 1 }],
+  reward: { type: "ORDER_6_FREE_BOWL", productId: "nutella-bliss" },
+});
+check("13. client cannot send its own price — the server prices from the catalogue",
+  tampered.lines[0].bowl.price === 149,
+);
+const bobState = await loyaltyState(db, bob.id);
+check("14. a reward id the customer never earned is rejected",
+  validateRedemption({
+    state: bobState, rewardId: freeBowl.id, productId: "tiramisu", cartProductIds: ["oreo-licious"],
+  }).ok === false,
+  "reward belongs to another customer",
+);
+
+// a fabricated count cannot conjure a reward: state comes from the database
+check("14b. loyalty state is read from the server, not the request",
+  (await loyaltyState(db, bob.id)).completedOrders === 0,
+);
+
+// reward-only product cannot be bought
+const sneaky = quote({ items: [{ id: MINI_BOWL.id, qty: 5 }] });
+check("   a reward-only Mini Bowl cannot be added to a cart", sneaky.lines.length === 0);
+
+console.log("\n── order lifecycle ──");
+const carol = await upsertCustomer(db, { phone: "7447360803", name: "Carol" });
+
+// 8/9. pending and cancelled orders do not count
+const pendingQuote = quote({ items: [{ id: "death-by-chocolate", qty: 1 }] });
+const pending = await createOrder(db, {
+  customerId: carol.id,
+  items: pendingQuote.lines.map((l) => ({ id: l.bowl.id, qty: l.qty, price: l.bowl.price })),
+  subtotal: pendingQuote.comboTotal,
+  discount: 0,
+  total: pendingQuote.total,
+});
+if ("error" in pending) throw new Error(pending.error);
+check("8/9. an unconfirmed order counts for nothing",
+  (await loyaltyState(db, carol.id)).completedOrders === 0,
+);
+
+await reverseOrder(db, pending.order.id, "cancelled");
+check("8. a cancelled order still counts for nothing",
+  (await loyaltyState(db, carol.id)).completedOrders === 0,
+);
+
+// 11. duplicate confirmation
+const dupe = await orderAndComplete(carol.id, [{ id: "oreo-licious", qty: 1 }]);
+const replay = await completeOrder(db, dupe.order.id);
+check("11. confirming the same order twice adds one Bite, not two",
+  replay.state.completedOrders === 1 && replay.counted === false,
+  `count ${replay.state.completedOrders}`,
+);
+
+// 10. refund after completion
+const refunded = await reverseOrder(db, dupe.order.id, "refunded");
+check("10. a refund walks the journey back",
+  refunded.state.completedOrders === 0,
+);
+check("   and revokes the unspent reward it had earned",
+  refunded.state.rewards.every((x) => x.status !== "available"),
+);
+
+console.log("\n── concurrency ──");
+const dave = await upsertCustomer(db, { phone: "7447360804", name: "Dave" });
+await orderAndComplete(dave.id, [{ id: "death-by-chocolate", qty: 1 }]);
+const daveReward = (await loyaltyState(db, dave.id)).rewards.find((x) => x.status === "available")!;
+
+// 12/16. two redemptions at once — the database picks a winner
+const both = await Promise.allSettled([
+  createOrder(db, {
+    customerId: dave.id,
+    items: [{ id: "oreo-licious", qty: 1, price: 159 }],
+    subtotal: 159, discount: 32, total: 127, rewardId: daveReward.id,
+  }),
+  createOrder(db, {
+    customerId: dave.id,
+    items: [{ id: "tiramisu", qty: 1, price: 199 }],
+    subtotal: 199, discount: 40, total: 159, rewardId: daveReward.id,
+  }),
+]);
+const won = both.filter((o) => o.status === "fulfilled" && !("error" in o.value)).length;
+check("12/16. two simultaneous redemptions, exactly one succeeds", won === 1, `${won} succeeded`);
+
+console.log("\n── a customer we have never seen ──");
+{
+  // the bug this guards: a first-time visitor was told they had finished all
+  // six Bites, because "no next reward" was read as "journey complete"
+  const fresh = { completedOrders: 0, rewards: [] };
+  const next = nextReward(fresh.completedOrders);
+  check(
+    "a new customer has a reward ahead of them, not nothing",
+    next?.milestone.n === 2 && next.ordersAway === 2,
+    `got ${next ? `milestone ${next.milestone.n}, ${next.ordersAway} away` : "null"}`,
+  );
+  check(
+    "a new customer is not 'journey complete'",
+    !isJourneyComplete(fresh.completedOrders),
+  );
+  check(
+    "only six completed orders counts as complete",
+    [0, 1, 2, 3, 4, 5].every((n) => !isJourneyComplete(n)) && isJourneyComplete(6),
+  );
+  check(
+    "nextReward returns null only once the journey is done",
+    nextReward(6) === null && nextReward(5) !== null,
+  );
+}
+
+console.log("\n── the strip's copy ──");
+check(
+  "every reward milestone names its own call to action",
+  MILESTONES.filter((m) => m.type !== null).every((m) => m.cta.length > 0 && m.checkout.length > 0),
+);
+check(
+  "the 4th stays quiet: no reward, no call to action, no checkout line",
+  MILESTONES[3].type === null && MILESTONES[3].cta === "" && MILESTONES[3].tone === "quiet",
+);
+check(
+  "the three real prizes are the emphasised ones",
+  [3, 5, 6].every((n) => MILESTONES[n - 1].tone === "major"),
+);
+check(
+  "compact labels stay short enough for a 360px row",
+  MILESTONES.every((m) => m.compact.length <= 11),
+  MILESTONES.map((m) => m.compact).join(" | "),
+);
+
+console.log("\n── after the sixth ──");
+const post = journeyView({ completedOrders: 8, rewards: [] });
+check("   a 7th and 8th order do not invent new rewards",
+  post.length === 6 && nextReward(8) === null,
+);
+check("   and the journey reads as finished", biteClub.completeHeadline.includes("👑"));
+
+console.log("\n── the welcome gift ──");
+
+/* The 20% a first-timer is promised in the hero. It has no row until it is
+   spent, so these cases are about the row appearing exactly once. */
+const wendy = await upsertCustomer(db, { phone: "7447360877", name: "Wendy" });
+const wendyState0 = await loyaltyState(db, wendy.id);
+
+check(
+  "a customer who has never ordered is owed the gift and holds no row",
+  wendyState0.completedOrders === 0 && wendyState0.rewards.length === 0,
+);
+
+const claim1 = await claimWelcomeReward(db, wendy.id);
+check("claiming it creates the row", !!claim1);
+
+const claim2 = await claimWelcomeReward(db, wendy.id);
+check(
+  "claiming twice returns the same row, never a second one",
+  claim2?.id === claim1?.id,
+  `${claim1?.id} / ${claim2?.id}`,
+);
+
+const wendyRows = await loyaltyState(db, wendy.id);
+check(
+  "   so the customer holds exactly one 20% reward",
+  wendyRows.rewards.length === 1 && wendyRows.rewards[0].milestone === 1,
+);
+
+/* The whole point: it can be spent on the FIRST order, which the old ladder
+   did not allow — validateRedemption used to refuse it at zero orders. */
+const verdict = validateRedemption({
+  state: wendyRows,
+  rewardId: claim1!.id,
+  cartProductIds: ["death-by-chocolate"],
+});
+check("it may be spent on the very first order", verdict.ok, verdict.ok ? "" : verdict.reason);
+
+const welcomeQuote = quote({
+  items: [{ id: "death-by-chocolate", qty: 1 }],
+  reward: { type: "ORDER_1_DISCOUNT_20" },
+});
+check(
+  "   and it takes 20% off that order",
+  welcomeQuote.reward?.amount === Math.round(welcomeQuote.comboTotal * 0.2) &&
+    welcomeQuote.total === welcomeQuote.comboTotal - welcomeQuote.reward!.amount,
+  `${welcomeQuote.comboTotal} − ${welcomeQuote.reward?.amount} = ${welcomeQuote.total}`,
+);
+
+const wendyDone = await orderAndComplete(
+  wendy.id,
+  [{ id: "death-by-chocolate", qty: 1 }],
+  claim1!.id,
+);
+check(
+  "spending it on the first order still counts as the 1st Bite",
+  wendyDone.state.completedOrders === 1,
+);
+check(
+  "   and completing that Bite does NOT hand back another 20%",
+  wendyDone.state.rewards.length === 1 &&
+    wendyDone.state.rewards[0].status === "redeemed",
+  wendyDone.state.rewards.map((x) => `${x.milestone}:${x.status}`).join(" "),
+);
+check(
+  "   the gift cannot be claimed again once an order holds it",
+  (await claimWelcomeReward(db, wendy.id)) === null,
+);
+
+/* Someone who never claims it is not punished: the row is granted when the
+   1st Bite completes, exactly as it always was, and waits for order 2. */
+const vlad = await upsertCustomer(db, { phone: "7447360878", name: "Vlad" });
+const vladDone = await orderAndComplete(vlad.id, [{ id: "oreo-licious", qty: 1 }]);
+check(
+  "skipping the gift leaves it waiting on the next order instead",
+  vladDone.state.rewards.length === 1 &&
+    vladDone.state.rewards[0].type === "ORDER_1_DISCOUNT_20" &&
+    vladDone.state.rewards[0].status === "available",
+);
+
+/* The invariant that makes the whole change safe: however it is taken, the
+   20% exists once per customer. */
+check(
+  "either way the 20% exists exactly once per customer",
+  wendyDone.state.rewards.filter((x) => x.milestone === 1).length === 1 &&
+    vladDone.state.rewards.filter((x) => x.milestone === 1).length === 1,
+);
+
+/* The rule the hero and the checkout both ask. These are the cases where the
+   answer has to be no, because each one is a way of taking the gift twice. */
+check(
+  "the gift is refused once an order has been completed",
+  !canClaimWelcome({ completedOrders: 1, rewards: [] }),
+);
+check(
+  "   and once it has actually been spent",
+  !canClaimWelcome({
+    completedOrders: 0,
+    rewards: [
+      {
+        id: "x",
+        type: "ORDER_1_DISCOUNT_20",
+        milestone: 1,
+        status: "redeemed",
+        earnedAt: "",
+        redeemedAt: "",
+        orderId: "o",
+      },
+    ],
+  }),
+);
+check(
+  "   but a row still sitting there available is theirs to spend",
+  canClaimWelcome({
+    completedOrders: 0,
+    rewards: [
+      {
+        id: "x",
+        type: "ORDER_1_DISCOUNT_20",
+        milestone: 1,
+        status: "available",
+        earnedAt: "",
+        redeemedAt: null,
+        orderId: null,
+      },
+    ],
+  }),
+);
+check(
+  "   and a stranger is owed it",
+  canClaimWelcome({ completedOrders: 0, rewards: [] }),
+);
+/* The customers built above are the real thing, straight out of Postgres. */
+check(
+  "the customer who spent it cannot claim it again",
+  !canClaimWelcome(wendyDone.state),
+);
+check(
+  "   and the one who skipped it is offered it no more either — it is a row now",
+  !canClaimWelcome(vladDone.state) && vladDone.state.completedOrders === 1,
+);
+
+check(
+  "the 1st Bite no longer promises a discount it already gave away",
+  !/next website order gets 20/i.test(MILESTONES[0].completedBody),
+  MILESTONES[0].completedBody,
+);
+
+console.log("\n── the hero ticket ──");
+
+/* The ticket only ever reads a snapshot, so a literal one is the whole
+   fixture. Anything the four states get wrong here is wrong on the first
+   screen, which is the most expensive place to be wrong. */
+function snap(over: Partial<LoyaltySnapshot>): LoyaltySnapshot {
+  return {
+    customer: { name: "Asha", phone: "9999999999" },
+    state: { completedOrders: 0, rewards: [] },
+    journey: [],
+    next: null,
+    offer: null,
+    history: [],
+    ...over,
+  };
+}
+
+const unseen = ticketView(null);
+check(
+  "a browser we have never seen is invited, not interrogated",
+  unseen.tone === "invite" && !unseen.known && unseen.earned === 0 && unseen.readyAt === null,
+  `${unseen.lead} / ${unseen.cta}`,
+);
+check(
+  "   and nothing in that invitation asks anyone to sign up",
+  !/sign ?up|join|register/i.test(`${unseen.lead} ${unseen.cta}`),
+);
+
+const midway = ticketView(
+  snap({
+    state: { completedOrders: 2, rewards: [] },
+    next: { label: "3rd Bite", short: "Signature Bowl ₹99", ordersAway: 1 },
+  }),
+);
+check(
+  "a returning customer with nothing to spend is shown where the next order lands",
+  midway.tone === "journey" && midway.earned === 2 && midway.lead.includes("2 of 6 Bites"),
+  `${midway.lead} / ${midway.cta}`,
+);
+
+/* The 4th Bite carries no reward, so after three orders the next prize is two
+   away — the ticket has to say so rather than promise it on the next order. */
+const gap = ticketView(
+  snap({
+    state: { completedOrders: 3, rewards: [] },
+    next: { label: "5th Bite", short: "FREE Mini Bowl", ordersAway: 2 },
+  }),
+);
+check(
+  "   and the rewardless 4th Bite is counted honestly, not glossed over",
+  gap.cta === heroTicket.moreAway(2) && gap.cta !== heroTicket.oneAway,
+  gap.cta,
+);
+
+const holding = ticketView(
+  snap({
+    state: { completedOrders: 3, rewards: [] },
+    offer: {
+      id: "r1",
+      type: "ORDER_3_SIGNATURE_BOWL_99",
+      label: "Signature Bowl ₹99",
+      detail: "",
+      choices: [],
+    },
+  }),
+);
+const third = MILESTONES[2];
+check(
+  "an unspent reward outranks progress and speaks in the milestone's own words",
+  holding.tone === "reward" && holding.lead.includes(third.short) && holding.cta === third.cta,
+  `${holding.lead} / ${holding.cta}`,
+);
+check(
+  "   its dot is the one that pulses",
+  holding.readyAt === 3,
+);
+check(
+  "   and it points at the bowls the reward can be spent on, not the whole menu",
+  holding.href === "#signature",
+);
+
+const percent = ticketView(
+  snap({
+    state: { completedOrders: 1, rewards: [] },
+    offer: {
+      id: "r2",
+      type: "ORDER_1_DISCOUNT_20",
+      label: "20% OFF",
+      detail: "",
+      choices: [],
+    },
+  }),
+);
+check(
+  "   a percentage applies to anything, so that one opens the whole menu",
+  percent.href === "#menu",
+);
+
+const vip = ticketView(snap({ state: { completedOrders: 6, rewards: [] } }));
+check(
+  "a finished journey says so instead of counting to seven",
+  vip.tone === "vip" && vip.earned === 6 && !vip.lead.includes("7"),
+  vip.lead,
+);
+
+const claimed = ticketView(null, true);
+check(
+  "once the gift is taken the ticket confirms it instead of selling it again",
+  claimed.tone === "claimed" && claimed.lead !== unseen.lead,
+  `${claimed.lead} / ${claimed.cta}`,
+);
+check(
+  "   and it stops asking to be tapped",
+  !/tap/i.test(claimed.cta),
+  claimed.cta,
+);
+check(
+  "   a claim cannot resurrect the invitation",
+  ticketView(null, true).tone !== "invite",
+);
+/* A reward the server has actually granted outranks a claim held in this
+   browser — otherwise a returning customer's ₹99 bowl would be hidden behind
+   a welcome gift they used months ago. */
+check(
+  "   a real server reward still wins over a local claim",
+  ticketView(
+    snap({
+      state: { completedOrders: 3, rewards: [] },
+      offer: {
+        id: "r9",
+        type: "ORDER_3_SIGNATURE_BOWL_99",
+        label: "Signature Bowl ₹99",
+        detail: "",
+        choices: [],
+      },
+    }),
+    true,
+  ).tone === "reward",
+);
+
+/* The ticket sits above the headline on a 360px screen. Every state has to
+   fit there, in both lines. */
+const everyState = [unseen, claimed, midway, gap, holding, percent, vip];
+check(
+  "every state fits the hero's two lines at 360px",
+  everyState.every((v) => v.lead.length <= 34 && v.cta.length <= 46),
+  everyState.map((v) => `${v.lead.length}/${v.cta.length}`).join(" · "),
+);
+check(
+  "no state is ever blank",
+  everyState.every((v) => v.lead.trim() !== "" && v.cta.trim() !== ""),
+);
+/* The ribbon is a flourish across the ticket's corner, not a third line of
+   copy: long wording there would reach the progress dots at 360px. */
+check(
+  "every state's ribbon stays two words wide",
+  everyState.every((v) => v.ribbon.trim() !== "" && v.ribbon.length <= 16),
+  everyState.map((v) => v.ribbon).join(" · "),
+);
+
+console.log(`\n${fail === 0 ? `ALL PASS (${pass})` : `${fail} FAILURES of ${pass + fail}`}`);
+await pg.close();
+process.exit(fail === 0 ? 0 : 1);

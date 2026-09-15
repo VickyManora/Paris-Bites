@@ -27,6 +27,12 @@
   --fresh-500: #4f9a68;
   --fresh-600: #2f6b45;
 
+  /* the "you are here" red: only ever the marker for where the customer
+     stands on the Bite Club journey, so it never competes with gold. */
+  --pin-100: #fdecec;
+  --pin-500: #e04b4b;
+  --pin-600: #c02f2f;
+
   --choc-500: #6b3f22;
   --choc-600: #4f2c16;
   --choc-700: #351c0d;
@@ -54,6 +60,9 @@
   --color-fresh-100: var(--fresh-100);
   --color-fresh-500: var(--fresh-500);
   --color-fresh-600: var(--fresh-600);
+  --color-pin-100: var(--pin-100);
+  --color-pin-500: var(--pin-500);
+  --color-pin-600: var(--pin-600);
   --color-choc-500: var(--choc-500);
   --color-choc-600: var(--choc-600);
   --color-choc-700: var(--choc-700);
@@ -212,11 +221,102 @@ body {
   50%      { transform: translate3d(0, -5px, 0); }
 }
 
+/* The "you are here" pin on the Bite Club ladder. A 3px hop — enough to
+   catch the eye in a row of still markers, small enough not to wobble the
+   grid it sits in. Transform only, so it stays on the compositor. */
+@keyframes pin-bounce {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -3px, 0); }
+}
+
+/* The Bite Club ladder filling in when it scrolls into view. Each earned
+   marker is held at nothing (fill-mode: both) through its own delay, then
+   pops over the resting circle — so the row counts itself out one bite at a
+   time instead of arriving all at once. */
+@keyframes bite-mark-in {
+  0%   { opacity: 0; transform: scale(0.35); }
+  60%  { opacity: 1; transform: scale(1.14); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* The hero ticket's one moving part: a band of light crossing it every few
+   seconds, and only while a reward is sitting there unspent. The text stays
+   put — a personal line has to be readable the instant it is looked at — so
+   the light travels instead of the words. Transform only. */
+@keyframes ticket-shimmer {
+  0%        { transform: translate3d(0, 0, 0); }
+  /* the band is a third of the ticket wide and starts a third off the left
+     edge, so 420% of itself carries it just past the right edge — and the
+     long hold afterwards is what makes it a glint rather than a strobe */
+  28%, 100% { transform: translate3d(420%, 0, 0); }
+}
+
+/* The hero ticket's idle lift, and the shadow it casts while it is up there.
+   Four pixels: enough for the card to read as sitting on the page rather than
+   printed on it, small enough that the headline underneath never appears to
+   move. The two run on one cycle, so the shadow is deepest at the top of the
+   rise — the card is furthest from the page exactly then.
+
+   The lift is transform only and stays on the compositor. The shadow does
+   repaint, which is the price of it belonging to the card rather than to a
+   box underneath: a separate layer needs its own radius, and a shadow spread
+   wide enough to read softly clamps that radius to nothing, which draws a
+   square-cornered halo under a rounded card. */
+@keyframes ticket-lift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50%      { transform: translate3d(0, -4px, 0); }
+}
+
+/* The card's own shadow, deepening as it rises. It reads the same pair of
+   variables the card rests on, so the resting value is written once — in the
+   component, beside the state that picks it. */
+@keyframes ticket-lift-shadow {
+  0%, 100% { box-shadow: var(--ticket-shadow-rest); }
+  50%      { box-shadow: var(--ticket-shadow-lift); }
+}
+
+/* The ambient band under the hero. Two identical copies of the list sit side
+   by side and the track slides exactly half its own width, so the moment it
+   resets is the moment the second copy is where the first began — no seam. */
+@keyframes marquee-drift {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(-50%, 0, 0); }
+}
+
+/* the "you are here" marker lands last, dropping onto the spot */
+@keyframes bite-pin-drop {
+  0%   { opacity: 0; transform: translate3d(0, -11px, 0) scale(0.7); }
+  65%  { opacity: 1; transform: translate3d(0, 2px, 0) scale(1.08); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+
 .animate-drift { animation: drift 9s ease-in-out infinite; }
 .animate-sparkle { animation: sparkle 4.5s ease-in-out infinite; }
 .animate-choco-bob { animation: choco-bob 6.5s ease-in-out infinite; }
 .animate-choco-sway { animation: choco-sway 8s ease-in-out infinite; }
 .animate-choco-lift { animation: choco-lift 3.6s ease-in-out infinite; }
+.animate-pin-bounce { animation: pin-bounce 1.4s ease-in-out infinite; }
+.animate-bite-mark { animation: bite-mark-in 0.46s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-bite-pin { animation: bite-pin-drop 0.52s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-ticket-shimmer { animation: ticket-shimmer 6.5s ease-out infinite; }
+
+/* Held back until the hero's entrance has finished, so the card settles into
+   place before it starts breathing. Paused on hover: a target that is still
+   drifting when you reach for it is a target you have to chase. */
+.animate-ticket-lift { animation: ticket-lift 3.6s ease-in-out 1.2s infinite; }
+.animate-ticket-lift-shadow { animation: ticket-lift-shadow 3.6s ease-in-out 1.2s infinite; }
+
+/* Where the card sits when nothing is animating it: through the delay before
+   the lift starts, and for anyone who has asked for no motion at all. */
+.ticket-card { box-shadow: var(--ticket-shadow-rest); }
+
+.ticket-float:hover,
+.ticket-float:hover .animate-ticket-lift-shadow { animation-play-state: paused; }
+
+/* Slow enough to read a phrase without tracking it, and paused on hover so a
+   fact can be held still long enough to finish. */
+.marquee-track { animation: marquee-drift 44s linear infinite; }
+.marquee-track:hover { animation-play-state: paused; }
 
 @media (max-width: 640px) {
   .animate-choco-bob { animation-name: choco-bob-sm; }
@@ -230,5 +330,12 @@ body {
   .animate-sparkle,
   .animate-choco-bob,
   .animate-choco-sway,
-  .animate-choco-lift { animation: none; }
+  .animate-choco-lift,
+  .animate-pin-bounce,
+  .animate-bite-mark,
+  .animate-bite-pin,
+  .animate-ticket-shimmer,
+  .animate-ticket-lift,
+  .animate-ticket-lift-shadow,
+  .marquee-track { animation: none; }
 }
