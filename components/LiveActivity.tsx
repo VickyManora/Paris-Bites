@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 
 import { liveActivity } from "@/lib/content";
-import { activityAt, type Activity } from "@/lib/live-activity";
+import {
+  activityAt,
+  formatCountdown,
+  timeUntilOpen,
+  type Activity,
+} from "@/lib/live-activity";
 import { CountUp } from "./motion/CountUp";
 
 /**
@@ -16,8 +21,12 @@ import { CountUp } from "./motion/CountUp";
  *
  * Nothing time-dependent renders on the server: the clock differs
  * between server and browser, so the first paint is the neutral shell
- * and the state arrives after mount. It then re-reads every 45s,
- * which is enough to catch the occasional +1 without polling hard.
+ * and the state arrives after mount.
+ *
+ * It ticks once a second, because outside service hours the status is a
+ * countdown to 7 PM and a clock that does not move is worse than no clock.
+ * The counters are re-read on the same tick but only change every few
+ * minutes, so this costs one cheap calculation a second and no network.
  */
 export function LiveActivity({
   className = "",
@@ -27,21 +36,30 @@ export function LiveActivity({
   align?: "start" | "center";
 }) {
   const [activity, setActivity] = useState<Activity | null>(null);
+  const [countdown, setCountdown] = useState<string | null>(null);
 
   useEffect(() => {
-    const read = () => setActivity(activityAt(new Date()));
+    const read = () => {
+      const now = new Date();
+      setActivity(activityAt(now));
+      const left = timeUntilOpen(now);
+      setCountdown(left.total > 0 ? formatCountdown(left) : null);
+    };
     read();
-    const id = setInterval(read, 45_000);
+    const id = setInterval(read, 1000);
     return () => clearInterval(id);
   }, []);
 
   const open = activity?.phase === "open";
+  /* Before opening — and after close, when the countdown has rolled over to
+     tomorrow — the pill carries the time left rather than a vague "opening
+     soon". The countdown is the answer to the question people actually have. */
   const status = !activity
     ? liveActivity.heading
     : activity.phase === "open"
       ? liveActivity.statusOpen
-      : activity.phase === "before"
-        ? liveActivity.statusBefore
+      : countdown
+        ? `${liveActivity.statusCountdown} ${countdown}`
         : liveActivity.statusClosed;
   const note = !activity
     ? liveActivity.heading
@@ -72,7 +90,7 @@ export function LiveActivity({
             />
           </span>
           <span
-            className={`text-[0.625rem] font-semibold uppercase tracking-[0.18em] ${
+            className={`text-[0.625rem] font-semibold uppercase tracking-[0.18em] tabular-nums ${
               open ? "text-fresh-600" : "text-gold-600"
             }`}
           >

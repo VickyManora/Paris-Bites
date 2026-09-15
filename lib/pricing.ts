@@ -13,7 +13,7 @@ export function findBowl(id: string) {
 }
 
 /**
- * Combo pricing.
+ * Combo pricing, then the website offer.
  *
  * A category's `combo` price covers any TWO bowls from that category. Pairs are
  * formed from the most expensive bowls first, so the customer keeps the biggest
@@ -21,6 +21,15 @@ export function findBowl(id: string) {
  * two ₹149 bowls (₹298) must not be "upgraded" to the ₹299 combo.
  *
  * A category with no `combo` (waffles) is simply summed at list price.
+ *
+ * There is no blanket website discount any more: Bite Club owns every
+ * discount, and a reward is applied on top of this by lib/loyalty/quote.ts.
+ * Keeping the two apart is what stops an order taking 20% twice.
+ *
+ *   listTotal   every item at its menu price
+ *   comboTotal  after 2-for pricing — what a reward is then applied to
+ *   savings     what the combos saved
+ *   total       same as comboTotal; kept so callers need not change
  */
 export function priceCart(lines: CartLine[]) {
   let listTotal = 0;
@@ -68,12 +77,30 @@ export function priceCart(lines: CartLine[]) {
   }
 
   const count = lines.reduce((n, l) => n + Math.max(0, l.qty), 0);
+  const comboTotal = total;
+  const savings = listTotal - comboTotal;
 
-  return { count, listTotal, total, savings: listTotal - total, combosApplied };
+  return {
+    count,
+    listTotal,
+    comboTotal,
+    savings,
+    combosApplied,
+    total: comboTotal,
+    totalSaved: savings,
+  };
 }
 
+/**
+ * The plain order message, with no loyalty in it.
+ *
+ * This is the fallback path: if the database is unreachable the cart must
+ * still sell desserts, so the customer gets an ordinary WhatsApp order and
+ * staff can add the Bite by hand later. A dessert cart does not stop trading
+ * because Postgres is down.
+ */
 export function whatsappMessage(lines: CartLine[], name: string) {
-  const { total, savings, combosApplied } = priceCart(lines);
+  const { total, totalSaved, combosApplied } = priceCart(lines);
   const rows = lines
     .filter((l) => l.qty > 0)
     .map((l) => `• ${l.qty} × ${l.bowl.name} — ${menu.currency}${l.bowl.price * l.qty}`);
@@ -96,7 +123,7 @@ export function whatsappMessage(lines: CartLine[], name: string) {
   }
 
   parts.push("", `Total: ${menu.currency}${total}`);
-  if (savings > 0) parts.push(`(saved ${menu.currency}${savings})`);
+  if (totalSaved > 0) parts.push(`(saved ${menu.currency}${totalSaved})`);
   if (name.trim()) parts.push("", `Name: ${name.trim()}`);
 
   return parts.join("\n");

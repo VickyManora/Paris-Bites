@@ -29,7 +29,12 @@ export function Rating({
       target="_blank"
       rel="noopener noreferrer"
       aria-label={reviews.aria}
-      className={`-my-3 inline-flex min-h-11 items-center gap-2 transition-colors hover:text-gold-600 sm:my-0 sm:min-h-0 ${className}`}
+      /* whitespace-nowrap is load-bearing: "4.9 (254) · Google reviews" reads
+         as one fact and must stay on one line. Squeezed into a narrow flex
+         parent the spans would otherwise each wrap, which turns a rating into
+         a small paragraph. Callers are responsible for giving it the ~240px
+         it needs at 12px. */
+      className={`-my-3 inline-flex min-h-11 items-center gap-1.5 whitespace-nowrap transition-colors sm:gap-2 hover:text-gold-600 sm:my-0 sm:min-h-0 ${className}`}
     >
       <Stars size={starSize} />
       <span className="font-medium">
@@ -37,7 +42,9 @@ export function Rating({
       </span>
       {detail && (
         <>
-          <span aria-hidden className="text-muted">
+          {/* the separator is decoration; at 360px those ~11px are the
+              difference between one comfortable line and a squeezed one */}
+          <span aria-hidden className="hidden text-muted sm:inline">
             ·
           </span>
           <span className="text-muted">{reviews.source}</span>
@@ -52,7 +59,7 @@ function Stars({ size }: { size: number }) {
   const partial = reviews.rating - filled;
 
   return (
-    <span aria-hidden className="inline-flex items-center gap-px">
+    <span aria-hidden className="inline-flex shrink-0 items-center gap-px">
       {Array.from({ length: reviews.outOf }, (_, i) => {
         // how much of this star is gold: all of it, none of it, or the remainder
         const fill = i < filled ? 1 : i === filled ? partial : 0;

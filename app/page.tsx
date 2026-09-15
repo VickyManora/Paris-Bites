@@ -1,5 +1,6 @@
 import { Nav } from "@/components/Nav";
 import { Hero } from "@/components/Hero";
+import { AmbientMarquee } from "@/components/AmbientMarquee";
 import { FreshFromTheCart } from "@/components/FreshFromTheCart";
 import { Why } from "@/components/Why";
 import { Menu } from "@/components/Menu";
@@ -14,6 +15,7 @@ export default function Home() {
       <Nav />
       <main>
         <Hero />
+        <AmbientMarquee />
         <FreshFromTheCart />
         <Why />
         <Menu />

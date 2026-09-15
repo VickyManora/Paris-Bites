@@ -27,6 +27,7 @@ export function Choco({
   delay = 0,
   y = 24,
   priority = false,
+  appear = "inView",
 }: {
   pose: ChocoPose;
   /** leave empty for decorative use — the default */
@@ -42,17 +43,30 @@ export function Choco({
   y?: number;
   /** set for above-the-fold use so the mascot doesn't pop in late */
   priority?: boolean;
+  /**
+   * When the entrance plays. `inView` waits for the mascot to be scrolled to,
+   * which is right on a long page. `mount` plays immediately — use it inside
+   * anything that appears already in front of the customer, like the cart's
+   * sending overlay, where waiting on an intersection can leave an invisible
+   * character on screen.
+   */
+  appear?: "inView" | "mount";
 }) {
   const reduce = useReducedMotion();
   const decorative = alt === "";
+
+  const shown = reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 };
+  const entrance =
+    appear === "mount"
+      ? { animate: shown }
+      : { whileInView: shown, viewport: { once: true, margin: "-8% 0px" } };
 
   return (
     <motion.div
       className={`pointer-events-none select-none ${className}`}
       aria-hidden={decorative || undefined}
       initial={reduce ? { opacity: 0 } : { opacity: 0, y, scale: 0.94 }}
-      whileInView={reduce ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-      viewport={{ once: true, margin: "-8% 0px" }}
+      {...entrance}
       transition={{ duration: reduce ? 0.4 : 1, delay, ease }}
     >
       <span className={float === "none" ? "block" : `block animate-choco-${float}`}>

@@ -88,12 +88,16 @@ export function Visit() {
                     </p>
                   </div>
 
-                  {/* frosted pills: the photo behind them is dark and busy, so
+                  {/* Frosted pills: the photo behind them is dark and busy, so
                       these keep the site's own light chrome rather than
-                      restating every colour for a dark ground */}
-                  <div className="flex flex-wrap items-stretch gap-3">
-                    <span className="glass inline-flex items-center rounded-2xl px-4 py-2.5">
-                      <Rating starSize={14} className="text-sm text-ink-700" />
+                      restating every colour for a dark ground.
+
+                      They stack full-width below `sm` rather than sharing a
+                      wrapping row — at 360px a shared row leaves the rating
+                      about 150px, and it breaks into a small paragraph. */}
+                  <div className="flex flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:gap-3">
+                    <span className="glass inline-flex items-center justify-center rounded-2xl px-4 py-2.5 sm:justify-start">
+                      <Rating starSize={13} className="text-[0.8125rem] text-ink-700 sm:text-sm" />
                     </span>
 
                     <span className="glass inline-flex items-start gap-2.5 rounded-2xl px-4 py-2.5">
@@ -124,9 +128,10 @@ export function Visit() {
             <Reveal delay={0.16}>
               <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
                 <motion.a
-                  href={links.maps}
+                  href={links.directions}
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label={`${visit.mapsCta} to ${visit.address}`}
                   whileTap={{ scale: 0.96 }}
                   transition={{ type: "spring", stiffness: 480, damping: 26 }}
                   className="group relative inline-flex flex-1 items-center justify-center gap-2.5 overflow-hidden rounded-full border border-transparent bg-ink-900 px-7 py-4 text-sm font-semibold text-cream-50 shadow-[0_16px_32px_-16px_rgba(53,28,13,0.65)] transition-all duration-500"
@@ -147,6 +152,7 @@ export function Visit() {
                   rel="noopener noreferrer"
                   whileTap={{ scale: 0.96 }}
                   transition={{ type: "spring", stiffness: 480, damping: 26 }}
+                  aria-label={`${visit.whatsappCta} — order or ask a question on WhatsApp`}
                   className="inline-flex flex-1 items-center justify-center gap-2.5 whitespace-nowrap rounded-full border border-ink-900/12 bg-cream-50 px-6 py-4 text-sm font-medium text-ink-700 shadow-[var(--shadow-soft)] transition-colors duration-300 hover:border-gold-500 hover:text-gold-600"
                 >
                   <WhatsAppIcon />
@@ -294,7 +300,7 @@ function MapCard() {
       aria-label={`${visit.mapCta} — ${visit.address}`}
       whileTap={{ scale: 0.995 }}
       transition={{ type: "spring", stiffness: 320, damping: 28 }}
-      className="card group relative -mx-5 block w-full overflow-hidden rounded-2xl transition-shadow duration-500 hover:shadow-[var(--shadow-lift)] sm:mx-0 lg:h-full"
+      className="card group relative block w-full overflow-hidden rounded-2xl transition-shadow duration-500 hover:shadow-[var(--shadow-lift)] lg:h-full"
     >
       <div className="relative aspect-[1648/954] w-full overflow-hidden bg-blush-100/45 lg:h-full lg:aspect-auto lg:min-h-[var(--map-min)]" style={{ ["--map-min" as string]: "260px" }}>
         <Image
@@ -302,7 +308,10 @@ function MapCard() {
           alt={visit.mapAlt}
           fill
           sizes="(max-width: 1024px) 100vw, 780px"
-          className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03] lg:object-contain"
+          /* object-contain everywhere: the box carries the artwork's own
+             ratio, so nothing is letterboxed and nothing is cropped — a map
+             with its edges cut off is a map missing landmarks. */
+          className="object-contain transition-transform duration-700 ease-out group-hover:scale-[1.02]"
         />
         <span
           aria-hidden
@@ -310,9 +319,14 @@ function MapCard() {
         />
       </div>
 
-      <span className="pointer-events-none absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-full border border-ink-900/10 bg-cream-50/90 px-4 py-2 text-xs font-medium text-ink-700 shadow-[var(--shadow-soft)] backdrop-blur-sm transition-colors duration-300 group-hover:text-gold-600">
-        <PinIcon />
-        {visit.mapCta}
+      {/* A full-width row does the centring, not `left-1/2`: an absolutely
+          positioned box offset by half its container only gets the remaining
+          half to lay out in, which is enough to wrap a four-word label. */}
+      <span className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center sm:inset-x-auto sm:bottom-4 sm:right-4">
+        <span className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-ink-900/10 bg-cream-50/90 px-4 py-2 text-xs font-medium text-ink-700 shadow-[var(--shadow-soft)] backdrop-blur-sm transition-colors duration-300 group-hover:text-gold-600">
+          <PinIcon />
+          {visit.mapCta}
+        </span>
       </span>
     </motion.a>
   );

@@ -17,7 +17,16 @@ export const links = {
   whatsapp: "https://wa.me/917447360809",
   whatsappNumber: "917447360809",
   instagram: "https://www.instagram.com/parisbitesofficial/",
+  /** the place itself — used by the map card and "Open in Google Maps" */
   maps: "https://maps.app.goo.gl/NvWorxyM6D2BoDHz6",
+  /* "Get Directions" should start navigating, not open a page you then have
+     to tap Directions on. This is Google's documented directions URL with
+     the business as the destination; it resolves by name and area, which is
+     reliable for a listed business. Swap `destination` for a Place ID
+     (`&destination_place_id=ChIJ…`) if we ever want it pin-exact. */
+  directions:
+    "https://www.google.com/maps/dir/?api=1&destination=" +
+    encodeURIComponent("Paris Bites Chocolaterie & Desserts, Aundh, Pune"),
 };
 
 /* ── Google reviews ────────────────────────────────────────
@@ -59,6 +68,8 @@ export const nav = {
     { label: "Menu", href: "#menu" },
     { label: "Waffles", href: "#waffles" },
     { label: "Visit", href: "#visit" },
+    // the one cross-page link in the nav: Bite Club has its own page
+    { label: "Bite Club", href: "/bite-club" },
   ],
   hours: "Open daily 7–11 PM",
 };
@@ -70,7 +81,6 @@ export const hero = {
     { text: "on your street", accent: true },
   ],
   body: "Street desserts, crafted with Parisian love. Every bowl is made fresh, using quality ingredients and a lot of love.",
-  badges: ["Prepared fresh after you order", "Loved by chocolate lovers in Aundh"],
   cta: "View menu",
   secondaryCta: "Visit us today",
   stats: [
@@ -78,6 +88,61 @@ export const hero = {
     { value: "7 PM", label: "Doors open" },
     { value: "8", label: "Signature bowls", countUp: 8 },
     { value: "100%", label: "Made to order" },
+  ],
+};
+
+/* ── The hero's reward ticket ──────────────────────────────
+   Only the wording for a visitor we do not recognise lives here. Every
+   other line the ticket shows — the prize, the invitation to spend it —
+   is a milestone's own `short` and `cta` from lib/loyalty/config.ts, so
+   the ladder stays the one place a reward is described.
+   ───────────────────────────────────────────────────────── */
+export const heroTicket = {
+  /** first visit: the hook stated as money, not as a programme to join */
+  inviteLead: "Your 1st order gets 20% OFF",
+  /* An instruction now, not a reassurance: the gift is taken by tapping the
+     ticket. It still may not say "sign up" — naming the step in order to deny
+     it plants the idea that there is one, and there isn't. */
+  inviteCta: "Tap to claim — applied at checkout",
+  /* Once taken. It names where the discount went, because someone who has
+     just tapped something wants to know it landed somewhere real. */
+  claimedLead: "20% OFF is yours",
+  claimedCta: "Waiting in your cart — go pick your bowls",
+  /** the stamp that lands on the ticket at the moment of claiming */
+  claimedStamp: "20% OFF CLAIMED",
+  oneAway: "One more order unlocks it",
+  /** n more orders unlock it — the 4th Bite carries no reward, so this is 2 */
+  moreAway: (n: number) => `${n} more orders unlock it`,
+  /* The ribbon across the ticket's top-left corner. Two words at most: it is
+     a flourish that says "this is a gift", not a second headline, and the
+     lead line underneath is the part carrying the offer. */
+  ribbon: {
+    invite: "Welcome gift",
+    claimed: "Gift claimed",
+    reward: "Reward unlocked",
+    journey: "Bite Club",
+    vip: "Bite Club VIP",
+  },
+  /** appended while the cart is shut, so "order now" never over-promises */
+  opensIn: "doors open in",
+  /** used instead of a countdown once it is more than half a day out */
+  opensAt: "doors open 7 PM",
+};
+
+/* ── The ambient band under the hero ───────────────────────
+   Low-value, repeated facts — the kind of thing a scrolling strip is
+   honest about carrying. The first two were the hero's badge pills; they
+   moved here so the first screen could give that row to the ticket.
+   Short phrases only: this travels.
+   ───────────────────────────────────────────────────────── */
+export const marquee = {
+  label: "Paris Bites at a glance",
+  items: [
+    "Prepared fresh after you order",
+    "Loved by chocolate lovers in Aundh",
+    "Bite Club rewards on every website order",
+    "Open daily 7–11 PM",
+    "Aundh, Pune",
   ],
 };
 
@@ -96,10 +161,37 @@ export const liveActivity = {
   opening: "Opens at 7 PM",
   ended: "Back tomorrow at 7 PM",
   statusOpen: "Live",
-  statusBefore: "Opening soon",
+  /** prefix for the countdown that replaces a plain "opening soon" */
+  statusCountdown: "Opens in",
   statusClosed: "Service ended",
   bowls: "Bowls served",
   waffles: "Waffles served",
+};
+
+/* ── Website offer ─────────────────────────────────────────
+   The blanket 20% is gone: it now belongs to Bite Club, as the reward for
+   the 1st and 2nd Bites. A discount everybody gets on every order cannot
+   also be a reward for ordering again — see lib/loyalty/config.ts, which
+   is the only place a discount is defined.
+   ───────────────────────────────────────────────────────── */
+export const menuStrip = {
+  headline: "Every website order earns a Bite Club reward",
+  body: "20% off your next order, a ₹99 Signature Bowl, a free bowl — website only.",
+  cta: "See the rewards",
+};
+
+/* ── Orders ────────────────────────────────────────────────
+   There is no backend: an order leaves as a WhatsApp message the customer
+   sends themselves. What the site can do is remember what was sent, on
+   this device, so the cart survives a refresh and the last order can be
+   repeated with one tap. See lib/orders.ts.
+   ───────────────────────────────────────────────────────── */
+export const orders = {
+  lastTitle: "Your last order",
+  reorder: "Order this again",
+  placedPrefix: "Sent",
+  emptyHistory: "Nothing ordered from this device yet.",
+  historyNote: "Saved on this device only.",
 };
 
 export const why = {
@@ -346,7 +438,10 @@ export const visit = {
   /** names the landmarks drawn on the artwork, for screen readers and search */
   mapAlt:
     "Illustrated map of Aundh, Pune showing the Paris Bites dessert cart on Nagras Road, near Nexus Westend Mall, The White House, D-Mart Aundh, New DP Road and the Mula River.",
-  mapCta: "Open in Google Maps",
+  /* Deliberately not "Get Directions": the map card opens the place page to
+     look around, the primary button starts navigation. Two words apart so
+     nobody wonders why there are two. */
+  mapCta: "View on Google Maps",
   landmarkNote: "Just minutes from Nexus Westend Mall and The White House.",
   /** the one line someone reads out to a driver */
   address: "Near Nexus Westend Mall, Aundh, Pune",
