@@ -233,6 +233,8 @@ begin
       from jsonb_array_elements(p_ladder) m
      where m->>'type' is not null
        and (m->>'earnedAfter')::int <= cnt
+       -- claim-only rewards are never handed out after the fact; see ladder()
+       and coalesce((m->>'claimOnly')::boolean, false) = false
   ), granted as (
     insert into loyalty_rewards (customer_id, milestone, type)
     select o.customer_id, e.n, e.type from earned e

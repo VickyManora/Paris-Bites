@@ -42,14 +42,14 @@ export type Milestone = {
   n: number;
   /**
    * How many completed orders a customer needs before this reward can be
-   * spent. It is `n` for every milestone but the first — completing a Bite
-   * pays out on a later order.
+   * spent — always `n - 1`, because the reward belongs TO its order rather
+   * than being paid out after it. The 1st Bite's 20% is spendable with zero
+   * completed orders, which is to say on the very first order; the 3rd
+   * Bite's ₹99 bowl needs two behind it, which is to say the third order.
    *
-   * The 1st is deliberately 0: its 20% is the welcome discount, spendable on
-   * the very first order rather than the one after it. That is the same
-   * discount the ladder always carried, moved to where it wins the order
-   * instead of rewarding one already placed — so nobody is given more, only
-   * sooner. Everything that decides money reads this field, never `n`.
+   * This is the field that decides money. Nothing reads `n` to work out
+   * eligibility, so the ladder can be reordered or extended here without
+   * touching the engine, the SQL or the cart.
    */
   earnedAfter: number;
   /** "1st Bite", used in every surface */
@@ -112,7 +112,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     n: 2,
-    earnedAfter: 2,
+    earnedAfter: 1,
     cta: "Order now and save 20%",
     checkout: "💕 Bite Club reward · 20% OFF",
     ordinal: "2nd",
@@ -128,7 +128,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     n: 3,
-    earnedAfter: 3,
+    earnedAfter: 2,
     cta: "Order and get your ₹99 Signature Bowl",
     checkout: "🍫 Reward unlocked · any Signature Bowl for ₹99",
     ordinal: "3rd",
@@ -144,7 +144,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     n: 4,
-    earnedAfter: 4,
+    earnedAfter: 3,
     cta: "",
     checkout: "",
     ordinal: "4th",
@@ -160,7 +160,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     n: 5,
-    earnedAfter: 5,
+    earnedAfter: 4,
     cta: "Order and collect your FREE Mini Bowl",
     checkout: "🎁 Your FREE Mini Bowl is unlocked",
     ordinal: "5th",
@@ -176,7 +176,7 @@ export const MILESTONES: Milestone[] = [
   },
   {
     n: 6,
-    earnedAfter: 6,
+    earnedAfter: 5,
     cta: "Order and claim your FREE Bowl",
     checkout: "👑 Your FREE Bowl is unlocked",
     ordinal: "6th",

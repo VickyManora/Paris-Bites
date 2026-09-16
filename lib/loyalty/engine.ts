@@ -85,16 +85,58 @@ export function availableRewards(state: LoyaltyState): RewardRecord[] {
 }
 
 /**
- * The one reward to offer at checkout.
+ * The one reward to offer at checkout: the one that belongs to THIS order.
  *
- * Lowest milestone first: a customer sitting on both the ₹99 bowl and a free
- * bowl spends the smaller one first, which is the order they were earned in
- * and keeps the journey reading as a sequence. One reward per order — mixing
- * two is where double-discount bugs live.
+ * Each rung of the ladder is a promise about a particular order — 20% on the
+ * first two, the ₹99 bowl on the third, nothing on the fourth, a Mini Bowl on
+ * the fifth, a free Bowl on the sixth. So the offer is the reward whose
+ * `earnedAfter` matches the orders already completed, and never merely the
+ * oldest one lying around.
+ *
+ * That distinction is the whole rule. Offering the lowest available instead
+ * meant a customer who declined a 20% carried it forward and was shown it
+ * again on their third order, in place of the ₹99 bowl the ladder promises
+ * there — and a customer part-way through the old ladder was shown a 20% on
+ * their fifth. A reward not taken on its own order is simply not offered
+ * again; the journey moves on.
+ *
+ * One reward per order, always — mixing two is where double-discount bugs
+ * live.
  */
 export function redeemableReward(state: LoyaltyState): RewardRecord | null {
-  const available = availableRewards(state).sort((a, b) => a.milestone - b.milestone);
-  return available[0] ?? null;
+  const owed = MILESTONES.filter((m) => m.earnedAfter === state.completedOrders).map((m) => m.n);
+
+  return (
+    availableRewards(state)
+      .filter((r) => owed.includes(r.milestone))
+      .sort((a, b) => a.milestone - b.milestone)[0] ?? null
+  );
+}
+
+/**
+ * The reward this customer's next order should carry, but which has no row.
+ *
+ * Rows are written when an order completes, against the ladder as it stood
+ * that day. Change the ladder — as happened when each reward moved onto its
+ * own order — and existing customers are left short: the count says the
+ * Mini Bowl is theirs on the next order, and nothing ever created it.
+ * Deriving that from the count rather than trusting the rows is what makes
+ * it recoverable.
+ *
+ * Deliberately only the reward for the order in front of them. Milestones
+ * they passed under the old ladder are gone; granting those after the fact
+ * would be inventing rewards they were never offered. The welcome gift is
+ * excluded for the same reason — it is claim-only, and belongs to a first
+ * order that has already happened.
+ */
+export function missingEarnedMilestones(state: LoyaltyState): number[] {
+  return MILESTONES.filter(
+    (m) =>
+      m.type !== null &&
+      m.n !== WELCOME_MILESTONE &&
+      m.earnedAfter === state.completedOrders &&
+      !state.rewards.some((r) => r.milestone === m.n),
+  ).map((m) => m.n);
 }
 
 /**

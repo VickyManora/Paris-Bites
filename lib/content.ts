@@ -459,7 +459,9 @@ export const visit = {
     { text: "Find the cart", accent: false },
     { text: "in Aundh", accent: true },
   ],
-  body: "A premium dessert cart experience — not a dine-in café. Walk-in friendly, no reservation needed.",
+  /* There IS seating — this line used to say "not a dine-in café", which was
+     wrong and was turning away the customer who wanted somewhere to sit. */
+  body: "A premium dessert cart with seating — sit and enjoy your bowl, or take it away. Walk-in friendly, no reservation needed.",
   details: [
     {
       title: "Where",
@@ -505,7 +507,9 @@ export const visit = {
   /** three reasons to make the trip, each already true elsewhere on the page */
   highlights: [
     { icon: "route" as const, title: "Easy to reach", body: "Near Nexus Westend Mall & The White House" },
-    { icon: "clock" as const, title: "Open daily", body: "From 7 PM to 11 PM" },
+    /* Replaces "Open daily", which repeated the hours card sitting directly
+       above it. Three is the row's limit — a fourth crowds a 360px screen. */
+    { icon: "clock" as const, title: "Dine-in & takeaway", body: "Sit and enjoy, or take it with you" },
     { icon: "heart" as const, title: "Freshly made", body: "Small batches, big happiness" },
   ],
   /* CTA order is the hierarchy: directions is the job of this section,

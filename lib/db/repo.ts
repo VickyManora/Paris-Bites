@@ -211,6 +211,45 @@ export async function findCustomerByPhone(db: Db, phone: string): Promise<Custom
   return row ?? null;
 }
 
+/**
+ * Write the reward rows a customer is owed but does not have.
+ *
+ * Only ever called when the count and the rows disagree, which happens when
+ * the ladder itself changes under an existing customer. `on conflict do
+ * nothing` keeps it idempotent, so two requests racing to heal the same
+ * account produce one row, not two.
+ */
+export async function grantMissingRewards(
+  db: Db,
+  customerId: string,
+  milestones: number[],
+): Promise<void> {
+  if (milestones.length === 0) return;
+
+  const owed = MILESTONES.filter((m) => milestones.includes(m.n) && m.type !== null);
+  if (owed.length === 0) return;
+
+  await db.query(
+    `with granted as (
+       insert into loyalty_rewards (customer_id, milestone, type)
+       select $1::uuid, (e->>'n')::int, e->>'type'
+         from jsonb_array_elements($2::text::jsonb) e
+       on conflict (customer_id, milestone) do nothing
+       returning id, milestone
+     )
+     insert into loyalty_transactions (customer_id, type, reward_id, description)
+     select $1::uuid, 'reward_earned', g.id, e->>'label'
+       from granted g
+       join jsonb_array_elements($2::text::jsonb) e on (e->>'n')::int = g.milestone`,
+    [
+      customerId,
+      JSON.stringify(
+        owed.map((m) => ({ n: m.n, type: m.type, label: `${m.label} — ${m.short}` })),
+      ),
+    ],
+  );
+}
+
 export async function loyaltyState(db: Db, customerId: string): Promise<LoyaltyState> {
   const [account] = await db.query<{ completed_orders: number }>(
     `select completed_orders from loyalty_accounts where customer_id = $1`,
@@ -363,6 +402,13 @@ function ladder() {
       type: m.type,
       label: m.label,
       short: m.short,
+      /* The welcome 20% is never granted retroactively: it belongs to the
+         first order, and the only way to hold one is to take it on that
+         order. Without this, a customer who declined it would be handed the
+         row anyway once their first Bite completed, and would then be
+         carrying two 20%s — one for the 2nd order and one left over for the
+         3rd, where the ladder says the ₹99 bowl belongs. */
+      claimOnly: m.n === WELCOME_MILESTONE,
     })),
   );
 }

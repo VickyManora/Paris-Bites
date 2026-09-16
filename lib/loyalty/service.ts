@@ -19,6 +19,7 @@ import {
   claimWelcomeReward,
   customerWithState,
   findCustomerByPhone,
+  grantMissingRewards,
   loyaltyState,
   normalisePhone,
   reverseOrder,
@@ -31,6 +32,7 @@ import {
   completionMessage,
   journeyView,
   nextReward,
+  missingEarnedMilestones,
   redeemableReward,
   validateRedemption,
   type LoyaltyState,
@@ -89,7 +91,19 @@ export async function snapshotForPhone(phone: string): Promise<LoyaltySnapshot> 
     return unknownCustomer();
   }
 
-  const state = await loyaltyState(conn, customer.id);
+  let state = await loyaltyState(conn, customer.id);
+
+  /* Heal an account the ladder moved under. A customer who reached four
+     Bites when the Mini Bowl sat at the sixth order has no row for it, and
+     the count says it is theirs — so write it, once, and read back. Costs
+     nothing for everyone else: the comparison is done on state already in
+     hand, and the write only fires when it finds a gap. */
+  const missing = missingEarnedMilestones(state);
+  if (missing.length > 0) {
+    await grantMissingRewards(conn, customer.id, missing);
+    state = await loyaltyState(conn, customer.id);
+  }
+
   const log = await transactions(conn, customer.id, 30);
 
   return {

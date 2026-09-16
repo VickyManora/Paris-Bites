@@ -5,6 +5,16 @@ const nextConfig: NextConfig = {
   // no build/route overlay in front of a customer-facing page
   devIndicators: false,
 
+  /* Declaring Turbopack, even empty, is what lets `next dev` start.
+     @serwist/next attaches a webpack config, and Next 16 refuses to run its
+     Turbopack dev server beside one unless we say we meant it. We do: the
+     service worker is deliberately disabled in development — a worker that
+     caches your edits and hides them is no help — so in dev that webpack
+     config has nothing to do. The production build opts back into webpack
+     explicitly (`next build --webpack`), which is where the worker is
+     actually built. */
+  turbopack: {},
+
   experimental: {
     /* Connectivity awareness for the UI. Next listens for online/offline,
        notices when a navigation or prefetch fetch fails, and polls with
