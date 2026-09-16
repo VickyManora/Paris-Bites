@@ -4,11 +4,10 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { JOURNEY_LENGTH, MILESTONES, biteClub, milestoneForType } from "@/lib/loyalty/config";
 import {
-  fetchSnapshot,
   rememberedPhone,
   serverPhone,
   subscribePhone,
-  type LoyaltySnapshot,
+  useLoyalty,
 } from "@/lib/loyalty/client";
 import { MapPin } from "./MapPin";
 
@@ -38,24 +37,11 @@ const MARK_MS = 460;
  */
 export function BiteClubStrip() {
   const phone = useSyncExternalStore(subscribePhone, rememberedPhone, serverPhone);
-  const [snapshot, setSnapshot] = useState<LoyaltySnapshot | null>(null);
+  /* One shared lookup for the whole page — see lib/loyalty/client.ts. A
+     failed one simply leaves the ladder as it is. */
+  const { snapshot, status } = useLoyalty(phone);
   const ladder = useRef<HTMLOListElement>(null);
   const [revealed, setRevealed] = useState(false);
-
-  useEffect(() => {
-    if (phone.replace(/\D/g, "").length < 10) return;
-    let cancelled = false;
-
-    fetchSnapshot(phone)
-      .then((data) => !cancelled && setSnapshot(data))
-      .catch(() => {
-        // a failed lookup simply leaves the ladder as it is
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [phone]);
 
   /* The ladder counts itself out the first time it is scrolled to, and only
      then — replaying it on every pass back up the page would turn the one
@@ -98,7 +84,7 @@ export function BiteClubStrip() {
      actually happening is what lets a newcomer see the pin immediately while
      still sparing a returning customer the sight of it on the 1st Bite before
      it corrects itself to theirs. */
-  const pending = phone.replace(/\D/g, "").length >= 10 && !snapshot;
+  const pending = status === "loading" && !snapshot;
 
   const earned = Math.min(completed, MILESTONES.length);
 
@@ -120,7 +106,15 @@ export function BiteClubStrip() {
           {biteClub.promise}
         </p>
 
-        {known ? (
+        {pending ? (
+          /* A number we have not heard back about yet. Left to itself this
+             line would read "0 of 6 Bites" — which is exactly the wrong
+             thing to tell someone on their 4th. */
+          <p className="mx-auto mt-3 flex max-w-[38ch] items-center justify-center gap-2 text-xs leading-relaxed text-muted sm:text-sm">
+            <span aria-hidden className="size-1.5 animate-pulse rounded-full bg-gold-500" />
+            {biteClub.checking}
+          </p>
+        ) : known ? (
           <p className="mx-auto mt-3 max-w-[38ch] text-xs leading-relaxed text-ink-700 sm:text-sm">
             <span className="font-semibold text-ink-900">
               {completed} of {MILESTONES.length} Bites

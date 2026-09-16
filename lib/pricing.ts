@@ -1,4 +1,6 @@
 import { menu, waffles, type Bowl, type Category } from "./content";
+import { MINI_BOWL } from "./loyalty/config";
+import { properName } from "./names";
 
 export type CartLine = { bowl: Bowl; category: Category; qty: number };
 
@@ -10,6 +12,37 @@ export const allBowls: { bowl: Bowl; category: Category }[] = [
 
 export function findBowl(id: string) {
   return allBowls.find((b) => b.bowl.id === id);
+}
+
+/**
+ * How an ordered item is written on a slip: "Death by Chocolate (Waffle)".
+ *
+ * The same dessert name is on the menu twice — once as a bowl, once as a
+ * waffle, at different prices — and an order is read as a bare list by
+ * whoever is packing the bag. A name on its own is genuinely ambiguous
+ * there, so every line carries what it is.
+ *
+ * An id we no longer sell still has to print something: a stored order keeps
+ * the name it was placed under, so pass that as `fallbackName` and an old
+ * order stays readable after the item leaves the menu.
+ */
+export function itemLabel(id: string, fallbackName?: string): string {
+  const found = findBowl(id);
+
+  if (found) {
+    const { name } = found.bowl;
+    const { kind } = found.category;
+    /* "Oreo Licious Bowl (Bowl)" helps nobody — a name that already says
+       what it is keeps the line short. */
+    const saysIt = new RegExp(`\\b${kind}\\b`, "i").test(name);
+    return saysIt ? name : `${name} (${kind})`;
+  }
+
+  /* The mini bowl is reward-only, so it is not on the menu — but it does
+     appear on orders, and it only exists as a bowl, so it needs no suffix. */
+  if (id === MINI_BOWL.id) return MINI_BOWL.name;
+
+  return fallbackName ?? id;
 }
 
 /**
@@ -103,7 +136,9 @@ export function whatsappMessage(lines: CartLine[], name: string) {
   const { total, totalSaved, combosApplied } = priceCart(lines);
   const rows = lines
     .filter((l) => l.qty > 0)
-    .map((l) => `• ${l.qty} × ${l.bowl.name} — ${menu.currency}${l.bowl.price * l.qty}`);
+    .map(
+      (l) => `• ${l.qty} × ${itemLabel(l.bowl.id)} — ${menu.currency}${l.bowl.price * l.qty}`,
+    );
 
   const parts = [
     `Hi Paris Bites! I'd like to order:`,
@@ -124,7 +159,7 @@ export function whatsappMessage(lines: CartLine[], name: string) {
 
   parts.push("", `Total: ${menu.currency}${total}`);
   if (totalSaved > 0) parts.push(`(saved ${menu.currency}${totalSaved})`);
-  if (name.trim()) parts.push("", `Name: ${name.trim()}`);
+  if (name.trim()) parts.push("", `Name: ${properName(name)}`);
 
   return parts.join("\n");
 }

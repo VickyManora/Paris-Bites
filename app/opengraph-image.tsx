@@ -25,15 +25,28 @@ export const alt = `${brand.name} — ${share.headline} in ${brand.area}, ${bran
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const file = (path: string) => readFile(join(process.cwd(), path));
-
+/* Every path below is spelled out in full at the call site, and that is the
+   point: Turbopack traces what it can read statically. Behind a helper taking
+   a `path` argument it can read nothing, so it gives up and traces the WHOLE
+   project into the serverless bundle — every source file and all of `public/`
+   shipped as server code, for the sake of five files. Five literals cost a
+   little repetition and trace exactly five files. */
 export default async function OpenGraphImage() {
   const [logo, choco, playfair, poppins, poppinsMedium] = await Promise.all([
-    file("public/brand/logo-lockup.png"),
-    file("public/choco/choco-bowl.png"),
-    file("node_modules/@fontsource/playfair-display/files/playfair-display-latin-700-normal.woff"),
-    file("node_modules/@fontsource/poppins/files/poppins-latin-400-normal.woff"),
-    file("node_modules/@fontsource/poppins/files/poppins-latin-500-normal.woff"),
+    readFile(join(process.cwd(), "public/brand/logo-lockup.png")),
+    readFile(join(process.cwd(), "public/choco/choco-bowl.png")),
+    readFile(
+      join(
+        process.cwd(),
+        "node_modules/@fontsource/playfair-display/files/playfair-display-latin-700-normal.woff",
+      ),
+    ),
+    readFile(
+      join(process.cwd(), "node_modules/@fontsource/poppins/files/poppins-latin-400-normal.woff"),
+    ),
+    readFile(
+      join(process.cwd(), "node_modules/@fontsource/poppins/files/poppins-latin-500-normal.woff"),
+    ),
   ]);
 
   const inline = (buffer: Buffer, mime: string) =>

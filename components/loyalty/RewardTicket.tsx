@@ -4,14 +4,13 @@ import { useEffect, useState, useSyncExternalStore, type CSSProperties } from "r
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { heroTicket } from "@/lib/content";
-import { MILESTONES } from "@/lib/loyalty/config";
+import { MILESTONES, biteClub } from "@/lib/loyalty/config";
 import { ticketView } from "@/lib/loyalty/ticket";
 import {
-  fetchSnapshot,
   rememberedPhone,
   serverPhone,
   subscribePhone,
-  type LoyaltySnapshot,
+  useLoyalty,
 } from "@/lib/loyalty/client";
 import { phaseAt, timeUntilOpen } from "@/lib/live-activity";
 import * as cart from "@/lib/cart-store";
@@ -43,23 +42,10 @@ const STEP = 90;
 export function RewardTicket({ className = "" }: { className?: string }) {
   const reduce = useReducedMotion();
   const phone = useSyncExternalStore(subscribePhone, rememberedPhone, serverPhone);
-  const [snapshot, setSnapshot] = useState<LoyaltySnapshot | null>(null);
+  /* One shared lookup for the whole page — see lib/loyalty/client.ts. A
+     failed one leaves the invitation showing, which is still true. */
+  const { snapshot, status } = useLoyalty(phone);
   const [closedNote, setClosedNote] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (phone.replace(/\D/g, "").length < 10) return;
-    let cancelled = false;
-
-    fetchSnapshot(phone)
-      .then((data) => !cancelled && setSnapshot(data))
-      .catch(() => {
-        // a failed lookup leaves the invitation showing, which is still true
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [phone]);
 
   /* The service clock differs between server and browser, so the first paint
      carries no note and it arrives after mount. Half a minute is plenty —
@@ -85,10 +71,17 @@ export function RewardTicket({ className = "" }: { className?: string }) {
   );
   const rewarded = tone === "reward";
 
+  /* We have a number for this browser and the server has not answered yet.
+     Until it does the ticket says so rather than guessing: ticketView has
+     nothing to go on but a null snapshot, which reads as a first-time
+     visitor — and telling a customer on their 4th Bite that their 1st order
+     gets 20% off is a worse first impression than a moment of "checking". */
+  const pending = status === "loading" && !snapshot;
+
   /* The welcome gift is the one state the ticket can act on by itself. Every
      other reward already has a row in the database and is applied in the cart,
      where the bowls it depends on are; this one needs nothing but the tap. */
-  const claimable = tone === "invite";
+  const claimable = tone === "invite" && !pending;
 
   const [celebrating, setCelebrating] = useState(false);
 
@@ -132,7 +125,9 @@ export function RewardTicket({ className = "" }: { className?: string }) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.75, delay: 0.3, ease }}
         whileTap={reduce ? undefined : { scale: 0.985 }}
-        aria-label={`${ribbon}. ${lead}. ${cta}`}
+        aria-label={
+          pending ? `${biteClub.name}. ${biteClub.checking}` : `${ribbon}. ${lead}. ${cta}`
+        }
         /* The pair the lift animates between. Written here rather than as a
            shadow utility so the resting value is stated once: the keyframes
            read it, and so does the card when motion is turned off. */
@@ -164,7 +159,7 @@ export function RewardTicket({ className = "" }: { className?: string }) {
         >
           {/* the satin highlight along the top of the band */}
           <span className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-cream-50/25 to-transparent" />
-          <span className="relative">{ribbon}</span>
+          <span className="relative">{pending ? biteClub.name : ribbon}</span>
         </span>
 
         {/* the two notches that make this read as a ticket someone is holding
@@ -187,24 +182,41 @@ export function RewardTicket({ className = "" }: { className?: string }) {
           </span>
         )}
 
-        <span className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="flex min-w-0 items-center gap-2">
-            <span aria-hidden className="shrink-0 text-sm leading-none text-gold-600">
-              {glyph}
+        {pending ? (
+          /* Two bars the size of the two lines they stand in for, so nothing
+             moves when the real words arrive. */
+          <span className="flex min-w-0 flex-1 flex-col gap-1.5 py-0.5">
+            <span className="flex min-w-0 items-center gap-2">
+              <span
+                aria-hidden
+                className="h-3 w-3 shrink-0 animate-pulse rounded-full bg-gold-500/25"
+              />
+              <span aria-hidden className="h-3 w-[58%] animate-pulse rounded-full bg-ink-900/10" />
             </span>
-            <span className="truncate text-[0.82rem] font-semibold text-ink-900 sm:text-sm">
-              {lead}
+            <span className="text-[0.7rem] leading-relaxed text-muted sm:text-xs">
+              {biteClub.checking}
             </span>
           </span>
+        ) : (
+          <span className="flex min-w-0 flex-1 flex-col gap-1">
+            <span className="flex min-w-0 items-center gap-2">
+              <span aria-hidden className="shrink-0 text-sm leading-none text-gold-600">
+                {glyph}
+              </span>
+              <span className="truncate text-[0.82rem] font-semibold text-ink-900 sm:text-sm">
+                {lead}
+              </span>
+            </span>
 
-          <span className="truncate text-[0.7rem] leading-relaxed text-ink-500 sm:text-xs">
-            {cta}
-            {closedNote && <span className="text-muted"> · {closedNote}</span>}
+            <span className="truncate text-[0.7rem] leading-relaxed text-ink-500 sm:text-xs">
+              {cta}
+              {closedNote && <span className="text-muted"> · {closedNote}</span>}
+            </span>
           </span>
-        </span>
+        )}
 
         <span className="flex shrink-0 flex-col items-end gap-2">
-          <Dots earned={earned} known={known} readyAt={readyAt} />
+          <Dots earned={earned} known={known} readyAt={readyAt} pending={pending} />
           <svg
             width="15"
             height="15"
@@ -312,13 +324,16 @@ function Dots({
   earned,
   known,
   readyAt,
+  pending = false,
 }: {
   earned: number;
   known: boolean;
   readyAt: number | null;
+  /** the answer is still coming, so the row breathes instead of claiming a zero */
+  pending?: boolean;
 }) {
   return (
-    <span aria-hidden className="flex items-center gap-1">
+    <span aria-hidden className={`flex items-center gap-1 ${pending ? "animate-pulse" : ""}`}>
       {MILESTONES.map((m) => {
         const filled = m.n <= earned;
         const here = known && m.n === earned + 1;

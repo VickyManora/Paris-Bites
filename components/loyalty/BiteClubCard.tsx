@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 
 import { JOURNEY_LENGTH, biteClub } from "@/lib/loyalty/config";
-import type { LoyaltySnapshot } from "@/lib/loyalty/client";
 import {
-  fetchSnapshot,
   rememberPhone,
   rememberedPhone,
   serverPhone,
   subscribePhone,
+  useLoyalty,
 } from "@/lib/loyalty/client";
+import { properName } from "@/lib/names";
 import { BiteJourney } from "./BiteJourney";
 
 /**
@@ -27,28 +27,12 @@ export function BiteClubCard({ compact = false }: { compact?: boolean }) {
      their journey on the first render instead of the sign-in form. */
   const phone = useSyncExternalStore(subscribePhone, rememberedPhone, serverPhone);
   const [input, setInput] = useState("");
-  const [snapshot, setSnapshot] = useState<LoyaltySnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // the fetch is the external system; state is only ever set in its callbacks
-  useEffect(() => {
-    if (!phone) return;
-    let cancelled = false;
-
-    fetchSnapshot(phone)
-      .then((data) => {
-        if (!cancelled) setSnapshot(data);
-      })
-      .catch(() => {
-        if (!cancelled) setError("Couldn't load your journey. Try again in a moment.");
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [phone]);
-
-  const loading = !snapshot && !error;
+  /* One shared lookup for the whole page — see lib/loyalty/client.ts. */
+  const { snapshot, status } = useLoyalty(phone);
+  const loading = status === "loading" && !snapshot;
+  const failed = status === "error" && !snapshot;
 
   function look(e: React.FormEvent) {
     e.preventDefault();
@@ -103,8 +87,12 @@ export function BiteClubCard({ compact = false }: { compact?: boolean }) {
     <div className="card rounded-3xl p-7 sm:p-9">
       <Header />
 
-      {loading && !snapshot ? (
-        <p className="mt-8 text-sm text-muted">Loading your journey…</p>
+      {loading ? (
+        <JourneySkeleton />
+      ) : failed ? (
+        <p className="mt-8 text-sm text-muted">
+          Couldn&apos;t load your journey. Try again in a moment.
+        </p>
       ) : snapshot ? (
         <>
           <div className="mt-6 flex flex-wrap items-end justify-between gap-4">
@@ -116,10 +104,10 @@ export function BiteClubCard({ compact = false }: { compact?: boolean }) {
               <p className="text-sm text-ink-500">
                 {snapshot.state.completedOrders === 0
                   ? snapshot.customer?.name
-                    ? `Welcome, ${snapshot.customer.name}`
+                    ? `Welcome, ${properName(snapshot.customer.name)}`
                     : "Welcome to Bite Club"
                   : snapshot.customer?.name
-                    ? `Welcome back, ${snapshot.customer.name}`
+                    ? `Welcome back, ${properName(snapshot.customer.name)}`
                     : "Welcome back"}
               </p>
               <p className="display mt-1 text-3xl">
@@ -184,7 +172,6 @@ export function BiteClubCard({ compact = false }: { compact?: boolean }) {
             type="button"
             onClick={() => {
               rememberPhone("");
-              setSnapshot(null);
               setInput("");
             }}
             className="mt-7 text-xs text-muted underline underline-offset-2 transition-colors hover:text-ink-700"
@@ -208,5 +195,42 @@ function Header() {
       <h2 className="display mt-4 text-[clamp(1.6rem,4vw,2.4rem)]">{biteClub.fullName}</h2>
       <p className="accent mt-1 text-sm font-medium">{biteClub.tagline}</p>
     </div>
+  );
+}
+
+/**
+ * The card's shape while the server is being asked.
+ *
+ * Built from the same blocks as the real thing — a greeting, a count, the
+ * next reward, six markers — so the card does not jump when the answer
+ * lands. It says "checking" rather than drawing a zero: a customer on their
+ * 4th Bite seeing "0 / 6" for half a second is the one thing this card
+ * cannot afford to get wrong.
+ */
+function JourneySkeleton() {
+  return (
+    <>
+      <div className="mt-6 animate-pulse" aria-hidden>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="h-3.5 w-40 rounded-full bg-ink-900/8" />
+            <div className="mt-2.5 h-8 w-32 rounded-lg bg-ink-900/8" />
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <div className="h-2.5 w-20 rounded-full bg-ink-900/8" />
+            <div className="h-3.5 w-28 rounded-full bg-ink-900/8" />
+          </div>
+        </div>
+
+        <div className="mt-8 flex items-center justify-between gap-2">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={i} className="size-11 shrink-0 rounded-full bg-ink-900/8" />
+          ))}
+        </div>
+      </div>
+
+      {/* the skeleton is decoration; this is the part that is actually read */}
+      <p className="mt-5 text-xs text-muted">{biteClub.checking}</p>
+    </>
   );
 }

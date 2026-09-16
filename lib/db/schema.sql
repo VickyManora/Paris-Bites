@@ -166,6 +166,176 @@ begin
 end;
 $$ language plpgsql;
 
+-- One customer's reward rows as JSON, so a caller that has just written
+-- them can read them back without a second round trip.
+create or replace function rewards_of(p_customer uuid) returns jsonb as $$
+  select coalesce(
+    (select jsonb_agg(to_jsonb(r) order by r.milestone)
+       from loyalty_rewards r where r.customer_id = p_customer),
+    '[]'::jsonb
+  );
+$$ language sql stable;
+
+-- ── Confirming an order, in one round trip ───────────────────
+-- Staff confirm an order: the one moment a journey advances. This used
+-- to be ten to nineteen statements — lock, update, count, then one
+-- INSERT per earned milestone, then the ledger, then two more to read
+-- the state back — every one of them a round trip. At ~330ms to a
+-- distant region that is several seconds with a row lock held open,
+-- which is a staff member watching a spinner in a busy shop.
+--
+-- The ladder is NOT duplicated here. It is passed in as `p_ladder`,
+-- built from MILESTONES in lib/loyalty/config.ts, so that file remains
+-- the only place a reward is defined. This function knows how to apply
+-- a ladder; it does not know what is on one.
+--
+-- Idempotent, exactly as before: the row is locked and re-read, and
+-- anything not still 'pending' returns the current state untouched. A
+-- double-tapped button awards one Bite.
+create or replace function complete_order(p_order uuid, p_ladder jsonb)
+returns table (order_row jsonb, was_counted boolean, completed integer, rewards jsonb)
+as $$
+declare
+  o   orders;
+  cnt integer;
+begin
+  select * into o from orders where id = p_order for update;
+  if not found then
+    raise exception 'order_not_found';
+  end if;
+
+  if o.status <> 'pending' or o.counted then
+    select coalesce(la.completed_orders, 0) into cnt
+      from loyalty_accounts la where la.customer_id = o.customer_id;
+
+    return query select to_jsonb(o), false, coalesce(cnt, 0), rewards_of(o.customer_id);
+    return;
+  end if;
+
+  update orders
+     set status = 'completed', completed_at = now(), counted = true
+   where id = p_order and status = 'pending'
+  returning * into o;
+
+  update loyalty_accounts
+     set completed_orders = completed_orders + 1, updated_at = now()
+   where customer_id = o.customer_id
+  returning completed_orders into cnt;
+
+  -- every reward the new count has earned, granted in ONE statement.
+  -- `on conflict do nothing` keeps it idempotent, and the ledger row is
+  -- written only for milestones that were actually new.
+  with earned as (
+    select (m->>'n')::int as n,
+           m->>'type'     as type,
+           m->>'label'    as label,
+           m->>'short'    as short
+      from jsonb_array_elements(p_ladder) m
+     where m->>'type' is not null
+       and (m->>'earnedAfter')::int <= cnt
+  ), granted as (
+    insert into loyalty_rewards (customer_id, milestone, type)
+    select o.customer_id, e.n, e.type from earned e
+    on conflict (customer_id, milestone) do nothing
+    returning id, milestone
+  )
+  insert into loyalty_transactions (customer_id, type, reward_id, description)
+  select o.customer_id, 'reward_earned', g.id, e.label || ' — ' || e.short
+    from granted g join earned e on e.n = g.milestone;
+
+  -- a reward this order had merely reserved is now genuinely spent
+  update loyalty_rewards
+     set status = 'redeemed', redeemed_at = now()
+   where order_id = p_order and status = 'reserved';
+
+  insert into loyalty_transactions (customer_id, type, order_id, description)
+  values (o.customer_id, 'order_completed', p_order,
+          'Order ' || o.code || ' completed — Bite ' || cnt);
+
+  return query select to_jsonb(o), true, cnt, rewards_of(o.customer_id);
+end;
+$$ language plpgsql;
+
+-- ── Cancelling or refunding, in one round trip ───────────────
+-- The mirror of the above, and the same reason. A reward the order only
+-- reserved is released; one already redeemed stays spent, because the
+-- customer ate the bowl. The count drops, and any still-unspent reward
+-- the new count no longer entitles them to is revoked.
+--
+-- "No longer entitles them to" is measured in `earnedAfter`, not in
+-- milestone position — the welcome gift sits at earnedAfter 0, so a
+-- customer refunded back to zero orders is still owed it.
+create or replace function reverse_order(p_order uuid, p_status text, p_ladder jsonb)
+returns table (order_row jsonb, completed integer, rewards jsonb)
+as $$
+declare
+  o       orders;
+  cnt     integer;
+  revoked integer := 0;
+  -- captured BEFORE the update below, which sets counted = false. Reading it
+  -- afterwards would say this order never counted, and the journey would
+  -- never walk back.
+  did_count boolean;
+begin
+  select * into o from orders where id = p_order for update;
+  if not found then
+    raise exception 'order_not_found';
+  end if;
+
+  if o.status = p_status then
+    select coalesce(la.completed_orders, 0) into cnt
+      from loyalty_accounts la where la.customer_id = o.customer_id;
+
+    return query select to_jsonb(o), coalesce(cnt, 0), rewards_of(o.customer_id);
+    return;
+  end if;
+
+  did_count := o.counted;
+
+  update orders set status = p_status, counted = false
+   where id = p_order
+  returning * into o;
+
+  update loyalty_rewards
+     set status = 'available', order_id = null
+   where order_id = p_order and status = 'reserved';
+
+  if did_count then
+    update loyalty_accounts
+       set completed_orders = greatest(completed_orders - 1, 0), updated_at = now()
+     where customer_id = o.customer_id
+    returning completed_orders into cnt;
+
+    with gone as (
+      update loyalty_rewards r
+         set status = 'revoked'
+       where r.customer_id = o.customer_id
+         and r.status = 'available'
+         and r.milestone in (
+           select (m->>'n')::int from jsonb_array_elements(p_ladder) m
+            where (m->>'earnedAfter')::int > cnt
+         )
+      returning 1
+    )
+    select count(*)::int into revoked from gone;
+
+    insert into loyalty_transactions (customer_id, type, order_id, description)
+    values (
+      o.customer_id,
+      case when p_status = 'refunded' then 'order_refunded' else 'order_cancelled' end,
+      p_order,
+      'Order ' || o.code || ' ' || p_status || ' — back to ' || cnt || ' Bites' ||
+        case when revoked > 0 then ', ' || revoked || ' unspent reward(s) revoked' else '' end
+    );
+  else
+    select coalesce(la.completed_orders, 0) into cnt
+      from loyalty_accounts la where la.customer_id = o.customer_id;
+  end if;
+
+  return query select to_jsonb(o), coalesce(cnt, 0), rewards_of(o.customer_id);
+end;
+$$ language plpgsql;
+
 -- ── Keep these tables off the public API ─────────────────────
 -- Supabase publishes every table in `public` through PostgREST, reachable
 -- with the anon key that ships in any browser. The app does not use that
