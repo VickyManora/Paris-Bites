@@ -54,15 +54,24 @@ function check(label: string, ok: boolean, detail = "") {
 const pg = new PGlite();
 await pg.exec(readFileSync("lib/db/schema.sql", "utf8"));
 
+/* Every statement the application sends, counted. In-process here, but in
+   production each one is a round trip to another continent — so this is the
+   number that decides whether staff wait on a spinner, and it is worth
+   asserting rather than hoping about. */
+let roundTrips = 0;
+
 const db: Db = {
   async query<T>(text: string, params: unknown[] = []) {
+    roundTrips++;
     const res = await pg.query(text, params as never[]);
     return res.rows as T[];
   },
   async tx<T>(fn: (db: Db) => Promise<T>) {
+    roundTrips++; // the transaction itself
     return (await pg.transaction(async (t) => {
       const scoped: Db = {
         async query<T2>(text: string, params: unknown[] = []) {
+          roundTrips++;
           const res = await t.query(text, params as never[]);
           return res.rows as T2[];
         },
@@ -329,8 +338,36 @@ const refunded = await reverseOrder(db, dupe.order.id, "refunded");
 check("10. a refund walks the journey back",
   refunded.state.completedOrders === 0,
 );
-check("   and revokes the unspent reward it had earned",
-  refunded.state.rewards.every((x) => x.status !== "available"),
+/* Refunded back to zero orders, they are a first-timer again — and a
+   first-timer is owed the welcome gift, so the 1st Bite's 20% survives. It
+   buys them nothing extra: a stranger would be offered exactly the same. */
+check("   and leaves the welcome gift standing, because they are a stranger again",
+  refunded.state.completedOrders === 0 &&
+    refunded.state.rewards.every((x) => x.milestone === 1 || x.status !== "available"),
+  refunded.state.rewards.map((x) => `${x.milestone}:${x.status}`).join(" "),
+);
+
+/* The revocation that actually protects anything: a reward the new, lower
+   count no longer entitles them to. Erin reaches 2 Bites, earning the 2nd
+   Bite's 20%, then the order that earned it is refunded. */
+const erin = await upsertCustomer(db, { phone: "7447360881", name: "Erin" });
+await orderAndComplete(erin.id, [{ id: "oreo-licious", qty: 1 }]);
+const erinSecond = await orderAndComplete(erin.id, [{ id: "oreo-licious", qty: 1 }]);
+const erinBefore = await loyaltyState(db, erin.id);
+check("   a 2nd Bite earns the 2nd milestone's reward",
+  erinBefore.completedOrders === 2 &&
+    erinBefore.rewards.some((x) => x.milestone === 2 && x.status === "available"),
+  erinBefore.rewards.map((x) => `${x.milestone}:${x.status}`).join(" "),
+);
+
+const erinAfter = await reverseOrder(db, erinSecond.order.id, "refunded");
+check("   refunding it revokes that reward, which is no longer earned",
+  erinAfter.state.completedOrders === 1 &&
+    erinAfter.state.rewards.find((x) => x.milestone === 2)?.status === "revoked",
+  erinAfter.state.rewards.map((x) => `${x.milestone}:${x.status}`).join(" "),
+);
+check("   but the 1st Bite's 20%, still earned at one order, is untouched",
+  erinAfter.state.rewards.find((x) => x.milestone === 1)?.status === "available",
 );
 
 console.log("\n── concurrency ──");
@@ -404,6 +441,51 @@ check("   a 7th and 8th order do not invent new rewards",
   post.length === 6 && nextReward(8) === null,
 );
 check("   and the journey reads as finished", biteClub.completeHeadline.includes("👑"));
+
+console.log("\n── round trips ──");
+
+/* The admin panel's confirm button used to run ten to nineteen statements in
+   series — a lock, a count, then one INSERT per earned milestone in a loop,
+   then the ledger, then two more to read the state back. Against a database
+   in another region that is several seconds with a row lock held open.
+   Everything now happens inside complete_order(). */
+const timed = await upsertCustomer(db, { phone: "7447360882", name: "Tess" });
+await orderAndComplete(timed.id, [{ id: "oreo-licious", qty: 1 }]);
+await orderAndComplete(timed.id, [{ id: "oreo-licious", qty: 1 }]);
+
+// a pending order to confirm, at a count where several rewards are in play
+const toConfirm = await createOrder(db, {
+  customerId: timed.id,
+  items: [{ id: "oreo-licious", qty: 1, price: 149 }],
+  subtotal: 149,
+  discount: 0,
+  total: 149,
+});
+if ("error" in toConfirm) throw new Error(toConfirm.error);
+
+let mark = roundTrips;
+const confirmed = await completeOrder(db, toConfirm.order.id);
+check(
+  "confirming an order is ONE statement, whatever the ladder is holding",
+  roundTrips - mark === 1,
+  `${roundTrips - mark} statement(s), ${confirmed.state.rewards.length} reward rows`,
+);
+
+mark = roundTrips;
+await reverseOrder(db, toConfirm.order.id, "refunded");
+check(
+  "so is refunding one",
+  roundTrips - mark === 1,
+  `${roundTrips - mark} statement(s)`,
+);
+
+mark = roundTrips;
+await completeOrder(db, toConfirm.order.id);
+check(
+  "   and so is a replayed confirmation that changes nothing",
+  roundTrips - mark === 1,
+  `${roundTrips - mark} statement(s)`,
+);
 
 console.log("\n── the welcome gift ──");
 

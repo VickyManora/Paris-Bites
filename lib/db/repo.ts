@@ -248,35 +248,6 @@ export async function loyaltyState(db: Db, customerId: string): Promise<LoyaltyS
 }
 
 /**
- * Grant every reward the count has earned, and only those.
- *
- * `on conflict do nothing` against `unique (customer_id, milestone)` makes
- * this safe to call as often as you like: the second call for a milestone is
- * a no-op, which is what makes order completion idempotent.
- */
-async function grantEarnedRewards(db: Db, customerId: string, completedOrders: number) {
-  const earned = MILESTONES.filter((m) => m.type !== null && m.earnedAfter <= completedOrders);
-
-  for (const m of earned) {
-    const inserted = await db.query<{ id: string }>(
-      `insert into loyalty_rewards (customer_id, milestone, type)
-       values ($1, $2, $3)
-       on conflict (customer_id, milestone) do nothing
-       returning id`,
-      [customerId, m.n, m.type],
-    );
-
-    if (inserted[0]) {
-      await db.query(
-        `insert into loyalty_transactions (customer_id, type, reward_id, description)
-         values ($1, 'reward_earned', $2, $3)`,
-        [customerId, inserted[0].id, `${m.label} — ${m.short}`],
-      );
-    }
-  }
-}
-
-/**
  * The welcome gift's row, created the first time it is actually spent.
  *
  * Every other reward is granted when a Bite completes. This one is granted
@@ -377,70 +348,86 @@ export async function createOrder(
 }
 
 /**
+ * The ladder, in the shape the SQL functions want it.
+ *
+ * Built from MILESTONES so config.ts stays the only definition of a reward.
+ * The database is told how far each one is earned and what it is called; it
+ * is never told what the rewards ARE, and never decides one.
+ */
+function ladder() {
+  return JSON.stringify(
+    MILESTONES.map((m) => ({
+      n: m.n,
+      earnedAfter: m.earnedAfter,
+      type: m.type,
+      label: m.label,
+      short: m.short,
+    })),
+  );
+}
+
+/** the rows the SQL functions hand back, before they are given their types */
+type RewardJson = {
+  id: string;
+  type: RewardType;
+  milestone: number;
+  status: RewardRecord["status"] | "reserved";
+  earned_at: string;
+  redeemed_at: string | null;
+  order_id: string | null;
+};
+
+function stateFrom(completed: number, rewards: RewardJson[] | string): LoyaltyState {
+  const rows = typeof rewards === "string" ? (JSON.parse(rewards) as RewardJson[]) : rewards;
+
+  return {
+    completedOrders: Number(completed ?? 0),
+    rewards: (rows ?? []).map((r) => ({
+      id: r.id,
+      type: r.type,
+      milestone: r.milestone,
+      // a reserved reward is spoken for: the UI must not offer it again
+      status: r.status === "reserved" ? "redeemed" : r.status,
+      earnedAt: new Date(r.earned_at).toISOString(),
+      redeemedAt: r.redeemed_at ? new Date(r.redeemed_at).toISOString() : null,
+      orderId: r.order_id,
+    })),
+  };
+}
+
+/**
  * Staff confirm an order: the one moment a journey advances.
  *
- * Idempotent by design. The row is locked and re-read inside the
- * transaction, and anything not still 'pending' returns the current state
+ * One call to complete_order() — the lock, the count, every reward the new
+ * count has earned, the reserved reward being spent, the ledger and the state
+ * read back, all inside the database. It used to be ten to nineteen round
+ * trips (one INSERT per milestone, in a loop), which at ~330ms to a distant
+ * region is several seconds of a staff member watching a spinner with a row
+ * lock held open.
+ *
+ * Idempotent by design, and still for the same reason: the row is locked and
+ * re-read, and anything not still 'pending' returns the current state
  * untouched — so a double-clicked button, a retried request or two staff
- * confirming the same order at once all produce exactly one Bite.
+ * confirming at once all produce exactly one Bite.
  */
 export async function completeOrder(
   db: Db,
   orderId: string,
 ): Promise<{ order: OrderRow; state: LoyaltyState; counted: boolean }> {
-  return db.tx(async (tx) => {
-    const [order] = await tx.query<OrderRow>(
-      `select * from orders where id = $1 for update`,
-      [orderId],
-    );
-    if (!order) throw new Error("Order not found");
+  const [row] = await db.query<{
+    order_row: OrderRow;
+    was_counted: boolean;
+    completed: number;
+    rewards: RewardJson[] | string;
+  }>(`select * from complete_order($1, $2::text::jsonb)`, [orderId, ladder()]);
 
-    if (order.status !== "pending" || order.counted) {
-      return { order: withItems(order), state: await loyaltyState(tx, order.customer_id), counted: false };
-    }
+  if (!row) throw new Error("Order not found");
 
-    const [updated] = await tx.query<OrderRow>(
-      `update orders
-          set status = 'completed', completed_at = now(), counted = true
-        where id = $1 and status = 'pending'
-      returning *`,
-      [orderId],
-    );
-
-    const [account] = await tx.query<{ completed_orders: number }>(
-      `update loyalty_accounts
-          set completed_orders = completed_orders + 1, updated_at = now()
-        where customer_id = $1
-      returning completed_orders`,
-      [order.customer_id],
-    );
-
-    await grantEarnedRewards(tx, order.customer_id, Number(account.completed_orders));
-
-    // a reward reserved by this order is now genuinely spent
-    await tx.query(
-      `update loyalty_rewards
-          set status = 'redeemed', redeemed_at = now()
-        where order_id = $1 and status = 'reserved'`,
-      [orderId],
-    );
-
-    await tx.query(
-      `insert into loyalty_transactions (customer_id, type, order_id, description)
-       values ($1, 'order_completed', $2, $3)`,
-      [
-        order.customer_id,
-        orderId,
-        `Order ${order.code} completed — Bite ${account.completed_orders}`,
-      ],
-    );
-
-    return {
-      order: withItems(updated),
-      state: await loyaltyState(tx, order.customer_id),
-      counted: true,
-    };
-  });
+  return {
+    order: withItems(typeof row.order_row === "string" ? JSON.parse(row.order_row) : row.order_row),
+    state: stateFrom(row.completed, row.rewards),
+    counted: row.was_counted,
+  };
 }
 
 /**
@@ -449,72 +436,28 @@ export async function completeOrder(
  * A reward the order merely reserved is released, because it was never
  * enjoyed. A reward already redeemed on a completed order is NOT clawed
  * back — the customer ate the bowl. Instead the count drops, and any
- * still-unspent reward above the new count is revoked, which is the only
- * reversal that cannot take something away twice.
+ * still-unspent reward the new count no longer entitles them to is revoked,
+ * which is the only reversal that cannot take something away twice.
+ *
+ * One round trip, for the same reason as completeOrder above.
  */
 export async function reverseOrder(
   db: Db,
   orderId: string,
   status: "cancelled" | "refunded",
 ): Promise<{ order: OrderRow; state: LoyaltyState }> {
-  return db.tx(async (tx) => {
-    const [order] = await tx.query<OrderRow>(
-      `select * from orders where id = $1 for update`,
-      [orderId],
-    );
-    if (!order) throw new Error("Order not found");
+  const [row] = await db.query<{
+    order_row: OrderRow;
+    completed: number;
+    rewards: RewardJson[] | string;
+  }>(`select * from reverse_order($1, $2, $3::text::jsonb)`, [orderId, status, ladder()]);
 
-    if (order.status === status) {
-      return { order: withItems(order), state: await loyaltyState(tx, order.customer_id) };
-    }
+  if (!row) throw new Error("Order not found");
 
-    const [updated] = await tx.query<OrderRow>(
-      `update orders set status = $2, counted = false where id = $1 returning *`,
-      [orderId, status],
-    );
-
-    // release a reservation; a spent reward stays spent
-    await tx.query(
-      `update loyalty_rewards
-          set status = 'available', order_id = null
-        where order_id = $1 and status = 'reserved'`,
-      [orderId],
-    );
-
-    if (order.counted) {
-      const [account] = await tx.query<{ completed_orders: number }>(
-        `update loyalty_accounts
-            set completed_orders = greatest(completed_orders - 1, 0), updated_at = now()
-          where customer_id = $1
-        returning completed_orders`,
-        [order.customer_id],
-      );
-
-      const revoked = await tx.query<{ id: string }>(
-        `update loyalty_rewards
-            set status = 'revoked'
-          where customer_id = $1
-            and status = 'available'
-            and milestone > $2
-        returning id`,
-        [order.customer_id, Number(account.completed_orders)],
-      );
-
-      await tx.query(
-        `insert into loyalty_transactions (customer_id, type, order_id, description)
-         values ($1, $2, $3, $4)`,
-        [
-          order.customer_id,
-          status === "refunded" ? "order_refunded" : "order_cancelled",
-          orderId,
-          `Order ${order.code} ${status} — back to ${account.completed_orders} Bites` +
-            (revoked.length ? `, ${revoked.length} unspent reward(s) revoked` : ""),
-        ],
-      );
-    }
-
-    return { order: withItems(updated), state: await loyaltyState(tx, order.customer_id) };
-  });
+  return {
+    order: withItems(typeof row.order_row === "string" ? JSON.parse(row.order_row) : row.order_row),
+    state: stateFrom(row.completed, row.rewards),
+  };
 }
 
 export async function orderByCode(db: Db, code: string): Promise<OrderRow | null> {
