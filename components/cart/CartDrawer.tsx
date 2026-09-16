@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useOffline } from "next/offline";
 import { AnimatePresence, motion } from "motion/react";
 import { cart as copy, links, menu, orders as orderCopy } from "@/lib/content";
 import { formatOrderDate, type StoredOrder } from "@/lib/orders";
@@ -23,7 +24,35 @@ import { ease } from "../motion/Reveal";
 import { Choco } from "../art/Choco";
 import { ProductThumb } from "../product/ProductThumb";
 import { RewardPanel } from "../loyalty/RewardPanel";
+import { InstallPrompt } from "../pwa/InstallPrompt";
 import { SendingOverlay } from "./SendingOverlay";
+
+/**
+ * Can we reach WhatsApp?
+ *
+ * `useOffline()` covers the cases the framework can see — the browser's own
+ * offline event, and its own failed navigations. It does not watch a plain
+ * `fetch` like the one that places an order, which is exactly the request
+ * that matters here. So when that request fails, this asks the network a
+ * direct question instead of guessing.
+ *
+ * `no-cors` because we only care whether the connection opens, not what
+ * comes back; `no-store` so a cached answer cannot claim the network is fine
+ * when it is not. A short timeout, because a customer waiting to order will
+ * not wait three seconds for a diagnosis.
+ */
+async function whatsappReachable(): Promise<boolean> {
+  try {
+    await fetch("https://wa.me/favicon.ico", {
+      mode: "no-cors",
+      cache: "no-store",
+      signal: AbortSignal.timeout(2500),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export function CartDrawer() {
   const {
@@ -44,6 +73,11 @@ export function CartDrawer() {
   } = useCart();
 
   const lastOrder = orders[0];
+
+  /* Next's own signal, not navigator.onLine — that only reports whether a
+     network interface is up, and says "online" on café WiFi with nothing
+     behind it. This one also flips when a request actually fails. */
+  const offline = useOffline();
 
   /* The remembered number arrives from the store, so the field is filled on
      the first client render rather than a frame later. Typing overrides it
@@ -137,6 +171,16 @@ export function CartDrawer() {
       return;
     }
 
+    /* Genuinely offline: stop here. The order cannot reach us, and the one
+       thing worse than a failed order is a customer who believes it
+       succeeded and turns up for a bowl nobody is making. This is a
+       different failure from the one handled below, where the customer has
+       a connection but our server does not answer. */
+    if (offline) {
+      setError(`${copy.offlineTitle}. ${copy.offlineBody}`);
+      return;
+    }
+
     setSending(true);
     rememberPhone(phone);
 
@@ -172,10 +216,25 @@ export function CartDrawer() {
       return;
     }
 
-    /* The cart must keep selling even when the database does not answer:
-       fall back to a plain WhatsApp order with no reward on it, which staff
-       can reconcile by hand. Losing a Bite is recoverable; losing the sale
-       is not. */
+    /* The request failed. Two very different worlds look identical from
+       here, and they call for opposite answers:
+
+         our server is down, but the phone has a connection
+           → hand the order to WhatsApp anyway. Losing a Bite is
+             recoverable; losing the sale is not.
+
+         the phone has no connection
+           → stop, and say so. WhatsApp cannot deliver it either, and a
+             customer who thinks the order went through turns up for a bowl
+             nobody is making.
+
+       So ask the network directly, against the host we would hand off to.
+       If WhatsApp is unreachable, the fallback has nothing to fall back on. */
+    if (result.error === "network" && !(await whatsappReachable())) {
+      setError(`${copy.offlineTitle}. ${copy.offlineBody}`);
+      return;
+    }
+
     if (result.error === "network") {
       const href = `${links.whatsapp}?text=${encodeURIComponent(whatsappMessage(lines, name))}`;
       placeOrder();
@@ -206,7 +265,7 @@ export function CartDrawer() {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ duration: 0.5, ease }}
-            className="fixed inset-y-0 right-0 z-[70] flex w-full max-w-md flex-col border-l border-ink-900/10 bg-cream-50 shadow-[-30px_0_70px_-40px_rgba(79,44,22,0.5)]"
+            className="safe-top safe-x fixed inset-y-0 right-0 z-[70] flex w-full max-w-md flex-col border-l border-ink-900/10 bg-cream-50 shadow-[-30px_0_70px_-40px_rgba(79,44,22,0.5)]"
           >
             <header className="flex items-center justify-between border-b border-ink-900/10 px-6 py-5">
               <div>
@@ -332,7 +391,11 @@ export function CartDrawer() {
                  screen rather than squeezed above the fields. On a wider
                  screen there is room for both, so nothing moves. */
               <footer
-                className={`border-t border-ink-900/10 bg-cream-100 px-6 py-5 ${
+                /* safe-bottom keeps the Order button clear of the home
+                   indicator once installed; --safe-extra preserves the py-5
+                   it already had rather than replacing it */
+                style={{ ["--safe-extra" as string]: "1.25rem" }}
+                className={`safe-bottom border-t border-ink-900/10 bg-cream-100 px-6 pt-5 ${
                   sending ? "hidden sm:block" : ""
                 }`}
               >
@@ -516,6 +579,10 @@ function OrderPlaced({
       >
         Send on WhatsApp
       </a>
+
+      {/* Asked here and nowhere else: they have just ordered, and the Bite
+          they earned is the reason to keep the app around. */}
+      <InstallPrompt />
 
       <button
         type="button"

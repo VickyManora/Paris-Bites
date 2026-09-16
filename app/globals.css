@@ -383,3 +383,30 @@ body {
   .animate-ticket-lift-shadow,
   .marquee-track { animation: none; }
 }
+
+/* ── Safe areas ───────────────────────────────────────────
+   Once installed, the app runs with no browser chrome, so a fixed element
+   at top: 0 sits under the notch and one at the bottom sits under the home
+   indicator. These add the device's own insets, and resolve to nothing at
+   all in a normal browser tab — so the same classes are safe everywhere and
+   there is no standalone-only branch to maintain.
+
+   They ADD to existing padding rather than replacing it, which is why each
+   one is expressed as a calc() against a variable the caller can set.
+   ──────────────────────────────────────────────────────── */
+@layer utilities {
+  .safe-top {
+    padding-top: calc(var(--safe-extra, 0px) + env(safe-area-inset-top, 0px));
+  }
+
+  .safe-bottom {
+    padding-bottom: calc(var(--safe-extra, 0px) + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* a drawer pinned to the right edge needs the landscape inset too, or a
+     rotated phone puts its buttons under the rounded corner */
+  .safe-x {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+}

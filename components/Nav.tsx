@@ -44,7 +44,7 @@ export function Nav() {
         initial={{ opacity: 0, y: -18 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.9, ease }}
-        className="fixed inset-x-0 top-0 z-50"
+        className="safe-top fixed inset-x-0 top-0 z-50"
       >
         <div
           aria-hidden

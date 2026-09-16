@@ -11,6 +11,25 @@ export const brand = {
   tagline: "Handcrafted desserts made fresh, every day.",
   city: "Pune",
   area: "Aundh",
+  /* One sentence describing the business, used by the page metadata, the
+     link preview and the installed app's manifest. It lives here rather than
+     beside any one of them so those three can never drift apart. */
+  description:
+    "Handcrafted chocolate dessert bowls and waffles, made fresh to order at the Paris Bites dessert cart in Aundh, Pune. Open daily from 7 PM to 11 PM.",
+};
+
+/* ── Installed app ─────────────────────────────────────────
+   What the phone shows once Paris Bites is on the home screen: the label
+   under the icon, and the colours the splash screen is painted in before
+   the first frame renders. `theme` matches the page background in
+   globals.css (--cream-100) so the splash hands over to the real page
+   without a flash of a different cream.
+   ───────────────────────────────────────────────────────── */
+export const installedApp = {
+  /** under the icon on a home screen — long names get truncated, so keep it short */
+  shortName: "Paris Bites",
+  theme: "#faf8f5",
+  background: "#faf8f5",
 };
 
 export const links = {
@@ -487,6 +506,27 @@ export const cart = {
   note: "We'll confirm within minutes. No login, no payment upfront.",
   savings: "Combo saving",
   total: "Total",
+  /* Shown when the phone has no connection at all. It says the cart is safe
+     because that is the customer's actual worry, and it does not offer to
+     send the order later: an order we have not received is not an order, and
+     a customer who believes otherwise turns up expecting dessert. */
+  offlineTitle: "You're offline",
+  offlineBody: "Your cart is saved. Try again once you have signal.",
+};
+
+/* ── Installing the app ────────────────────────────────────
+   Offered once, on the order-sent screen — the moment a customer has just
+   committed and their Bite Club journey has just moved. Nowhere else: an
+   install banner on a menu is the thing people dismiss without reading.
+   ───────────────────────────────────────────────────────── */
+export const install = {
+  title: "Keep Paris Bites on your home screen",
+  body: "One tap to reorder, and your Bite Club rewards are always with you.",
+  action: "Add to home screen",
+  dismiss: "Not now",
+  /* iOS has no install prompt a site may trigger, so Safari gets told how
+     to do it by hand rather than shown a button that cannot work. */
+  iosBody: "Tap the Share button, then “Add to Home Screen”.",
 };
 
 export const footer = {
