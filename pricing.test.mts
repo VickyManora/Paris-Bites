@@ -80,6 +80,34 @@ for (const [label, lines] of cases) {
   console.log(`        ${bowl} · ${waffle}`);
 }
 
+/* Mini Bowls never join a 2-for. The owner's rule, and it holds by
+   construction — combos are per category and Mini Bowls carries none — but
+   it is the kind of thing a later "tidy-up" merges into Signature Bowls
+   without realising it hands away a ₹299 pair for ₹69 + ₹149. */
+{
+  const cases: [string, CartLine[], number][] = [
+    ["2 minis are just two minis", [line("mini-bowl", 2)], 138],
+    ["a mini never pairs with a signature bowl", [line("mini-bowl", 1), line("death-by-chocolate", 1)], 218],
+    [
+      "nor does it subsidise one",
+      [line("mini-bowl", 2), line("death-by-chocolate", 1)],
+      287,
+    ],
+    [
+      "and it leaves a real signature pair alone",
+      [line("mini-bowl", 1), line("death-by-chocolate", 1), line("oreo-licious", 1)],
+      69 + 299,
+    ],
+  ];
+
+  for (const [label, lines, expected] of cases) {
+    const p = priceCart(lines);
+    const ok = p.total === expected;
+    if (!ok) fail++;
+    console.log(`${ok ? "PASS" : "FAIL"}  ${label} — ₹${p.total} (want ₹${expected})`);
+  }
+}
+
 // an item that has left the menu still has to print something readable
 {
   const ok =
@@ -90,8 +118,14 @@ for (const [label, lines] of cases) {
   console.log(`${ok ? "PASS" : "FAIL"}  an off-menu item still prints a name`);
 }
 
-// sanity: combo prices must actually beat the two cheapest in each category
+// sanity: where a category HAS a combo, it must beat the two cheapest in it.
+// Mini Bowls carries no combo — a 2-for on a ₹69 bowl is not an offer anyone
+// needs — so there is nothing here to check.
 for (const c of menu.categories) {
+  if (c.combo === undefined) {
+    console.log(`\nNOTE ${c.title}: no combo offer`);
+    continue;
+  }
   const cheapest = c.items.map((i) => i.price).sort((a, b) => a - b).slice(0, 2);
   console.log(
     `\nNOTE ${c.title}: combo ₹${c.combo} vs two cheapest ₹${cheapest[0] + cheapest[1]} → ${

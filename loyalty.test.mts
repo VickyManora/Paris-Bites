@@ -14,7 +14,13 @@
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 
-import { MILESTONES, MINI_BOWL, biteClub, eligibleProducts } from "./lib/loyalty/config";
+import {
+  MILESTONES,
+  MINI_BOWL,
+  biteClub,
+  eligibleProducts,
+  isEligibleProduct,
+} from "./lib/loyalty/config";
 import { heroTicket } from "./lib/content";
 import {
   canClaimWelcome,
@@ -321,9 +327,38 @@ check("14b. loyalty state is read from the server, not the request",
   (await loyaltyState(db, bob.id)).completedOrders === 0,
 );
 
-// reward-only product cannot be bought
-const sneaky = quote({ items: [{ id: MINI_BOWL.id, qty: 5 }] });
-check("   a reward-only Mini Bowl cannot be added to a cart", sneaky.lines.length === 0);
+// the Mini Bowl is a real ₹69 product now, so it CAN be bought — what must
+// not happen is it sneaking into a reward it was never meant for
+const bought = quote({ items: [{ id: MINI_BOWL.id, qty: 2 }] });
+check(
+  "   the Mini Bowl is purchasable at its menu price",
+  bought.lines.length === 1 && bought.total === MINI_BOWL.price * 2,
+  `₹${bought.total} for 2 × ₹${MINI_BOWL.price}`,
+);
+check(
+  "   a ₹69 Mini Bowl is not eligible for the ₹99 Signature reward",
+  !isEligibleProduct("ORDER_3_SIGNATURE_BOWL_99", MINI_BOWL.id),
+);
+check(
+  "   nor for the 6th Bite's free bowl",
+  !isEligibleProduct("ORDER_6_FREE_BOWL", MINI_BOWL.id),
+);
+
+/* The bug this guards: a gifted item is not in the subtotal, so subtracting
+   its price discounted the items the customer WAS paying for — a free ₹199
+   bowl wiped out a ₹159 bowl and handed over both for nothing. */
+{
+  const q = quote({
+    items: [{ id: "oreo-licious", qty: 1 }],
+    reward: { type: "ORDER_6_FREE_BOWL", productId: "tiramisu" },
+  });
+  check(
+    "   a free bowl does not also discount the bowls being paid for",
+    q.total === 159 && q.giftLine?.id === "tiramisu",
+    `charged ₹${q.total}, expected ₹159`,
+  );
+  check("   and its worth still counts as a saving", q.totalSaved === 199, `₹${q.totalSaved}`);
+}
 
 console.log("\n── order lifecycle ──");
 const carol = await upsertCustomer(db, { phone: "7447360803", name: "Carol" });

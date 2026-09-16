@@ -317,6 +317,25 @@ export const menu = {
       ],
     },
     {
+      /* Its own category, deliberately not part of Signature Bowls. Two
+         rules key off that category id: the 2-for-₹299 combo, and the
+         3rd-Bite "any Signature Bowl for ₹99" reward. A ₹69 bowl inside
+         either would be nonsense — ₹99 for a ₹69 bowl is not a reward. */
+      id: "mini",
+      title: "Mini Bowls",
+      kind: "Bowl" as const,
+      serves: "A smaller portion · perfect alongside",
+      items: [
+        {
+          id: "mini-bowl",
+          name: "Mini Bowl",
+          note: "A little Paris Bites bowl — the same chocolate, a lighter portion.",
+          price: 69,
+          tone: "cream",
+        },
+      ],
+    },
+    {
       id: "premium",
       title: "Premium Bowls",
       kind: "Bowl" as const,

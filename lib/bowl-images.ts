@@ -4,6 +4,7 @@ import biscoffDelight from "@/public/bowls/biscoff-delight.png";
 import blueberryBliss from "@/public/bowls/blueberry-bliss.png";
 import deathByChocolate from "@/public/bowls/death-by-chocolate.png";
 import kitkatBreak from "@/public/bowls/kitkat-break.png";
+import miniBowl from "@/public/bowls/mini-bowl.png";
 import nutellaBliss from "@/public/bowls/nutella-bliss.png";
 import oreoLicious from "@/public/bowls/oreo-licious.png";
 import strawberryBliss from "@/public/bowls/strawberry-bliss.png";
@@ -21,6 +22,7 @@ export const bowlPhotos: Record<string, StaticImageData> = {
   "death-by-chocolate": deathByChocolate,
   "oreo-licious": oreoLicious,
   "kitkat-break": kitkatBreak,
+  "mini-bowl": miniBowl,
   tiramisu,
   "strawberry-bliss": strawberryBliss,
   "biscoff-delight": biscoffDelight,

@@ -13,7 +13,7 @@
  */
 import { menu } from "../content";
 import { findBowl, itemLabel, priceCart, type CartLine } from "../pricing";
-import { MINI_BOWL, milestoneForType, type RewardType } from "./config";
+import { milestoneForType, type RewardType } from "./config";
 import { properName } from "../names";
 
 export type QuoteItem = { id: string; qty: number };
@@ -42,11 +42,6 @@ export type Quote = {
   currency: string;
 };
 
-/** ids the customer may not simply add to a cart; rewards put them there */
-export function isRewardOnlyProduct(id: string): boolean {
-  return id === MINI_BOWL.id;
-}
-
 /**
  * Price a cart, optionally spending one reward on it.
  *
@@ -64,9 +59,6 @@ export function quote({
   const lines: CartLine[] = [];
 
   for (const item of items) {
-    // a reward-only product can never be bought, however it arrives here
-    if (isRewardOnlyProduct(item.id)) continue;
-
     const found = findBowl(item.id);
     if (!found) continue; // unknown id: silently dropped, never priced
 
@@ -80,6 +72,8 @@ export function quote({
 
   let applied: AppliedReward | null = null;
   let gift: Quote["giftLine"] = null;
+  /** the menu price of a gifted item — a real saving, just not a discount */
+  let giftValue = 0;
   let total = comboTotal;
 
   const mechanic = reward ? milestoneForType(reward.type)?.mechanic : null;
@@ -112,24 +106,27 @@ export function quote({
     }
 
     if (mechanic.kind === "free-item" && reward.productId) {
-      const rewardOnly = "rewardOnly" in mechanic.eligible;
-      const item = rewardOnly
-        ? { bowl: MINI_BOWL, category: null }
-        : (findBowl(reward.productId) ?? null);
+      const item = findBowl(reward.productId);
 
       if (item) {
         /* The gift rides along with the order rather than joining the cart:
            it is never a priced line, so no combo, percentage or later reward
-           can be computed against it. */
+           can be computed against it.
+
+           And it does NOT discount the rest of the order. Subtracting its
+           price from `comboTotal` — which never contained it — made a free
+           ₹199 bowl wipe out a ₹159 bowl the customer was paying for, and
+           hand them the lot for nothing. The gift is free; everything else
+           costs what it costs. */
         gift = { id: item.bowl.id, name: item.bowl.name };
+        giftValue = item.bowl.price;
         applied = {
           type: reward.type,
           productId: item.bowl.id,
           label: `FREE ${item.bowl.name}`,
-          // a free bowl's worth, for the receipt; a Mini Bowl has no price yet
-          amount: rewardOnly ? 0 : item.bowl.price,
+          // what the gift is worth, for the receipt and the "you saved" line
+          amount: item.bowl.price,
         };
-        if (!rewardOnly) total = Math.max(0, comboTotal - item.bowl.price);
       }
     }
   }
@@ -142,7 +139,8 @@ export function quote({
     reward: applied,
     giftLine: gift,
     total,
-    totalSaved: listTotal - total,
+    // the gift never entered listTotal, so its worth is added to the saving
+    totalSaved: listTotal - total + giftValue,
     currency: menu.currency,
   };
 }

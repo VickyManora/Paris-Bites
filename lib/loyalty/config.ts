@@ -35,10 +35,7 @@ export type RewardMechanic =
  * Which products a reward may be spent on, expressed against the catalogue's
  * own category ids — never against product names, which change.
  */
-export type EligibilityRule =
-  | { categories: string[] }
-  /** the reward-only Mini Bowl, which is not otherwise purchasable */
-  | { rewardOnly: true };
+export type EligibilityRule = { categories: string[] };
 
 export type Milestone = {
   /** 1-based position in the journey */
@@ -91,6 +88,7 @@ export type Milestone = {
    keys off the category id. Adding a bowl to that category makes it eligible
    automatically — nothing here needs editing. */
 const SIGNATURE = "signature";
+const MINI = "mini";
 
 export const MILESTONES: Milestone[] = [
   {
@@ -172,7 +170,7 @@ export const MILESTONES: Milestone[] = [
     type: "ORDER_5_FREE_MINI_BOWL",
     short: "FREE Mini Bowl",
     detail: "On the house, with your bowl",
-    mechanic: { kind: "free-item", eligible: { rewardOnly: true } },
+    mechanic: { kind: "free-item", eligible: { categories: [MINI] } },
     completedHeadline: "5th Bite complete!",
     completedBody: "Your FREE Mini Bowl is unlocked. One more Bite to your FREE Bowl!",
   },
@@ -223,28 +221,26 @@ export function milestoneForType(type: RewardType): Milestone | undefined {
 }
 
 /**
- * The reward-only Mini Bowl.
+ * The Mini Bowl.
  *
- * It is not on the menu and cannot be bought — it exists so the 5th-Bite
- * reward has a real product to attach to, with a real id that the server can
- * validate. The name and photograph are placeholders until the owner supplies
- * the real ones; `rewardOnly` keeps it out of the menu either way.
+ * A real ₹69 product on the menu, and the prize for the 5th Bite. It is read
+ * from the catalogue rather than described again here: a second definition
+ * would be a second price, and the two would drift the first time one
+ * changed.
  */
-export const MINI_BOWL: Bowl & { rewardOnly: true } = {
-  id: "mini-bowl-reward",
-  name: "Mini Bowl",
-  note: "A little Paris Bites bowl, on the house.",
-  price: 0,
-  tone: "cream",
-  rewardOnly: true,
-};
+export const MINI_BOWL: Bowl = (() => {
+  const found = menu.categories
+    .find((c) => c.id === MINI)
+    ?.items.find((i) => i.id === "mini-bowl");
+
+  if (!found) throw new Error("The Mini Bowl is missing from the menu in lib/content.ts");
+  return found;
+})();
 
 /** every product a reward may be spent on, by reward type */
 export function eligibleProducts(type: RewardType): Bowl[] {
   const rule = milestoneForType(type)?.mechanic;
   if (!rule || rule.kind === "percent") return [];
-
-  if ("rewardOnly" in rule.eligible) return [MINI_BOWL];
 
   const ids = new Set(rule.eligible.categories);
   // annotated, so the mixed bowl/waffle literals collapse to one product type

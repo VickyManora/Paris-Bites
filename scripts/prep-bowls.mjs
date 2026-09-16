@@ -25,6 +25,7 @@ const SOURCES = {
   "biscoff.png": "biscoff-delight",
   "blueberry.png": "blueberry-bliss",
   "nutella.png": "nutella-bliss",
+  "mini_bowl.png": "mini-bowl",
 };
 
 await mkdir(OUT, { recursive: true });

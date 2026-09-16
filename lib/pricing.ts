@@ -38,9 +38,12 @@ export function itemLabel(id: string, fallbackName?: string): string {
     return saysIt ? name : `${name} (${kind})`;
   }
 
-  /* The mini bowl is reward-only, so it is not on the menu — but it does
-     appear on orders, and it only exists as a bowl, so it needs no suffix. */
-  if (id === MINI_BOWL.id) return MINI_BOWL.name;
+  /* Ids that orders were placed under before the catalogue changed. The
+     Mini Bowl was a reward-only item with a different id until it went on
+     the menu at ₹69, and orders carrying the old one are still in the book —
+     staff reading them should see a name, not a slug. */
+  const retired: Record<string, string> = { "mini-bowl-reward": MINI_BOWL.name };
+  if (retired[id]) return retired[id];
 
   return fallbackName ?? id;
 }
