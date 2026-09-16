@@ -12,8 +12,9 @@
  * One implementation, so the two cannot disagree.
  */
 import { menu } from "../content";
-import { findBowl, priceCart, type CartLine } from "../pricing";
+import { findBowl, itemLabel, priceCart, type CartLine } from "../pricing";
 import { MINI_BOWL, milestoneForType, type RewardType } from "./config";
+import { properName } from "../names";
 
 export type QuoteItem = { id: string; qty: number };
 
@@ -158,11 +159,15 @@ export function orderMessage({
 }): string {
   const parts = [`Hi Paris Bites! I'd like to order:`, "", `Order code: ${code}`, ""];
 
+  /* Every line says what it is — the same dessert name is sold as both a
+     bowl and a waffle, and this message is what the kitchen packs from. */
   for (const line of q.lines) {
-    parts.push(`• ${line.qty} × ${line.bowl.name} — ${q.currency}${line.bowl.price * line.qty}`);
+    parts.push(
+      `• ${line.qty} × ${itemLabel(line.bowl.id)} — ${q.currency}${line.bowl.price * line.qty}`,
+    );
   }
 
-  if (q.giftLine) parts.push(`• 1 × ${q.giftLine.name} — FREE (Bite Club reward)`);
+  if (q.giftLine) parts.push(`• 1 × ${itemLabel(q.giftLine.id)} — FREE (Bite Club reward)`);
 
   if (q.comboSavings > 0) parts.push("", `Combo applied: −${q.currency}${q.comboSavings}`);
 
@@ -178,7 +183,7 @@ export function orderMessage({
 
   parts.push("", `Total: ${q.currency}${q.total}`);
   if (q.totalSaved > 0) parts.push(`(saved ${q.currency}${q.totalSaved})`);
-  if (name.trim()) parts.push("", `Name: ${name.trim()}`);
+  if (name.trim()) parts.push("", `Name: ${properName(name)}`);
 
   return parts.join("\n");
 }

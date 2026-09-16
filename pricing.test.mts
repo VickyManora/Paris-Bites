@@ -1,5 +1,5 @@
 import { menu } from "./lib/content";
-import { priceCart, findBowl, whatsappMessage, type CartLine } from "./lib/pricing";
+import { priceCart, findBowl, itemLabel, whatsappMessage, type CartLine } from "./lib/pricing";
 
 const line = (id: string, qty: number): CartLine => {
   const f = findBowl(id);
@@ -63,6 +63,31 @@ for (const [label, lines] of cases) {
   const ok = p.total === 0 && p.totalSaved === 0;
   if (!ok) fail++;
   console.log(`${ok ? "PASS" : "FAIL"}  empty cart costs nothing`);
+}
+
+/* The same dessert name is sold as a bowl and as a waffle. Whoever packs the
+   bag reads the order as a flat list, so the two must never print alike. */
+{
+  const bowl = itemLabel("death-by-chocolate");
+  const waffle = itemLabel("waffle-death-by-chocolate");
+  const ok =
+    bowl === "Death by Chocolate (Bowl)" &&
+    waffle === "Death by Chocolate (Waffle)" &&
+    // a name that already says "Bowl" is not made to say it twice
+    itemLabel("oreo-licious") === "Oreo Licious Bowl";
+  if (!ok) fail++;
+  console.log(`${ok ? "PASS" : "FAIL"}  a bowl and a waffle of the same name read differently`);
+  console.log(`        ${bowl} · ${waffle}`);
+}
+
+// an item that has left the menu still has to print something readable
+{
+  const ok =
+    itemLabel("mini-bowl-reward") === "Mini Bowl" &&
+    itemLabel("gone-forever", "Retired Bowl") === "Retired Bowl" &&
+    itemLabel("gone-forever") === "gone-forever";
+  if (!ok) fail++;
+  console.log(`${ok ? "PASS" : "FAIL"}  an off-menu item still prints a name`);
 }
 
 // sanity: combo prices must actually beat the two cheapest in each category

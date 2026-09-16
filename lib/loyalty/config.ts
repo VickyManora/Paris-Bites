@@ -268,6 +268,10 @@ export const biteClub = {
   tagline: "6 Bites. 6 Rewards. 1 Delicious Journey.",
   exclusive: "Website exclusive",
   explainer: "Every website order automatically unlocks your next reward.",
+  /* Shown while the server is being asked where someone stands. Saying
+     nothing would mean showing a zero, and a customer on their 4th Bite
+     reading "1st Bite" for half a second does not trust the rest of it. */
+  checking: "Checking your Bites…",
   pitch:
     "Order directly from the Paris Bites website and your Bite Club journey starts automatically.",
   /* There is no joining. A customer's first completed website order creates

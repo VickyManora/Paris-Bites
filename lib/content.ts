@@ -242,6 +242,12 @@ export type Bowl = {
 export type Category = {
   id: string;
   title: string;
+  /* What one item from this category IS, in one word. The menu shows bowls
+     and waffles under their own headings, so the page never needs it — but
+     an order slip is just a list, and "Death by Chocolate" is both a bowl
+     and a waffle at different prices. Whoever is packing the bag has to be
+     able to tell them apart. */
+  kind: "Bowl" | "Waffle";
   serves: string;
   /** price for any TWO items from this category; omit for no combo offer */
   combo?: number;
@@ -262,6 +268,7 @@ export const menu = {
     {
       id: "signature",
       title: "Signature Bowls",
+      kind: "Bowl" as const,
       serves: "Serves 1 · Rich & filling",
       combo: 299,
       items: [
@@ -293,6 +300,7 @@ export const menu = {
     {
       id: "premium",
       title: "Premium Bowls",
+      kind: "Bowl" as const,
       serves: "Serves 1 · Indulgent & luxurious",
       combo: 399,
       items: [
@@ -357,6 +365,7 @@ export const waffles = {
   category: {
     id: "waffles",
     title: "Waffles",
+    kind: "Waffle" as const,
     serves: "Serves 1 · Pressed to order",
     items: [
       {

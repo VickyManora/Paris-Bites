@@ -25,6 +25,7 @@ import {
   milestone,
   type RewardType,
 } from "../loyalty/config";
+import { properName } from "../names";
 import type { LoyaltyState, RewardRecord } from "../loyalty/engine";
 import type { Db } from "./adapter";
 
@@ -110,7 +111,7 @@ export async function upsertCustomer(
        set name = case when $2 = '' then customers.name else $2 end,
            updated_at = now()
      returning id, phone, name`,
-    [normalised, name.trim().slice(0, 80)],
+    [normalised, properName(name).slice(0, 80)],
   );
 
   await db.query(
@@ -178,7 +179,7 @@ export async function customerWithState(
               '[]'::json
             ) as rewards
        from up`,
-    [normalised, name.trim().slice(0, 80)],
+    [normalised, properName(name).slice(0, 80)],
   );
 
   return {

@@ -28,6 +28,7 @@ import {
 } from "./lib/loyalty/engine";
 import { quote } from "./lib/loyalty/quote";
 import { ticketView } from "./lib/loyalty/ticket";
+import { properName } from "./lib/names";
 import type { LoyaltySnapshot } from "./lib/loyalty/service-types";
 import type { Db } from "./lib/db/adapter";
 import {
@@ -118,6 +119,27 @@ check("phone normalises to one identity",
   normalisePhone("7447360809") === "917447360809",
 );
 check("junk phone rejected", normalisePhone("12") === null);
+
+/* A name typed on a phone keyboard in a hurry is still the same person, and
+   staff read it aloud when they hand the bag over. */
+check(
+  "a name is written down properly however it was typed",
+  properName("vicky manora") === "Vicky Manora" &&
+    properName("VICKY MANORA") === "Vicky Manora" &&
+    properName("  vicky   manora  ") === "Vicky Manora",
+  properName("  vicky   manora  "),
+);
+check(
+  "   the parts of a name keep their capitals",
+  properName("d'souza") === "D'Souza" && properName("mary-jane") === "Mary-Jane",
+  `${properName("d'souza")} · ${properName("mary-jane")}`,
+);
+check(
+  "   and case someone typed on purpose is left alone",
+  properName("Ravi McKenna") === "Ravi McKenna" && properName("DeSouza") === "DeSouza",
+  properName("Ravi McKenna"),
+);
+check("   a blank name stays blank", properName("   ") === "");
 
 const alice = await upsertCustomer(db, { phone: "7447360801", name: "Alice" });
 check("customer created with a loyalty account", !!alice.id);

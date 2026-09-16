@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 
 import { menu } from "@/lib/content";
+import { itemLabel } from "@/lib/pricing";
+import { ProductThumb } from "@/components/product/ProductThumb";
 import { milestone } from "@/lib/loyalty/config";
+import { properName } from "@/lib/names";
 
 /**
  * The order desk, for two people on a phone beside a dessert cart.
@@ -136,7 +139,7 @@ export function AdminPanel() {
     if (action === "complete") {
       setFlash(
         data.counted
-          ? `${order.code} confirmed — ${order.name || "customer"} is on Bite ${data.completedOrders}`
+          ? `${order.code} confirmed — ${properName(order.name) || "customer"} is on Bite ${data.completedOrders}`
           : `${order.code} was already confirmed`,
       );
     } else {
@@ -241,9 +244,22 @@ export function AdminPanel() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="display text-lg">{order.code}</p>
-                    <p className="mt-0.5 text-sm text-ink-700">
-                      {order.name || "No name"} ·{" "}
-                      <a href={`tel:${order.phone}`} className="underline underline-offset-2">
+
+                    {/* The name is what staff say out loud when they hand the
+                        bag over, so it is the one thing on this row worth
+                        picking out of the small print. */}
+                    <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                      {order.name ? (
+                        <span className="rounded-full bg-gold-500/15 px-2.5 py-1 text-sm font-semibold text-ink-900 ring-1 ring-gold-500/30">
+                          {properName(order.name)}
+                        </span>
+                      ) : (
+                        <span className="text-sm italic text-muted">No name</span>
+                      )}
+                      <a
+                        href={`tel:${order.phone}`}
+                        className="text-sm text-ink-700 underline underline-offset-2"
+                      >
                         {order.phone}
                       </a>
                     </p>
@@ -272,22 +288,34 @@ export function AdminPanel() {
                   </div>
                 </div>
 
-                <ul className="mt-3 border-t border-ink-900/8 pt-3 text-sm text-ink-700">
+                {/* A picture per line: this list is what someone packs the
+                    bag from, and a bowl and a waffle can share a name. */}
+                <ul className="mt-3 space-y-2 border-t border-ink-900/8 pt-3 text-sm text-ink-700">
                   {order.items.map((item) => (
-                    <li key={item.id} className="flex justify-between gap-3">
-                      <span>
-                        {item.qty} × {item.id}
+                    <li key={item.id} className="flex items-center justify-between gap-3">
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <ProductThumb id={item.id} name={itemLabel(item.id)} className="size-10" />
+                        <span className="min-w-0">
+                          {item.qty} × {itemLabel(item.id)}
+                        </span>
                       </span>
-                      <span className="text-ink-500 tabular-nums">
+                      <span className="shrink-0 text-ink-500 tabular-nums">
                         {menu.currency}
                         {item.price * item.qty}
                       </span>
                     </li>
                   ))}
                   {order.gift_product_id && (
-                    <li className="flex justify-between gap-3 text-fresh-600">
-                      <span>1 × {order.gift_product_id}</span>
-                      <span>FREE</span>
+                    <li className="flex items-center justify-between gap-3 text-fresh-600">
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <ProductThumb
+                          id={order.gift_product_id}
+                          name={itemLabel(order.gift_product_id)}
+                          className="size-10"
+                        />
+                        <span className="min-w-0">1 × {itemLabel(order.gift_product_id)}</span>
+                      </span>
+                      <span className="shrink-0">FREE</span>
                     </li>
                   )}
                 </ul>

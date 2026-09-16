@@ -4,21 +4,24 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { AnimatePresence, motion } from "motion/react";
 import { cart as copy, links, menu, orders as orderCopy } from "@/lib/content";
 import { formatOrderDate, type StoredOrder } from "@/lib/orders";
-import { whatsappMessage } from "@/lib/pricing";
+import { itemLabel, whatsappMessage } from "@/lib/pricing";
 import { quote } from "@/lib/loyalty/quote";
 import { JOURNEY_LENGTH, WELCOME_OFFER_ID, biteClub } from "@/lib/loyalty/config";
 import {
-  fetchSnapshot,
+  putSnapshot,
+  refreshSnapshot,
   rememberPhone,
   rememberedPhone,
   serverPhone,
   submitOrder,
   subscribePhone,
+  useLoyalty,
   type LoyaltySnapshot,
 } from "@/lib/loyalty/client";
 import { useCart } from "./CartContext";
 import { ease } from "../motion/Reveal";
 import { Choco } from "../art/Choco";
+import { ProductThumb } from "../product/ProductThumb";
 import { RewardPanel } from "../loyalty/RewardPanel";
 import { SendingOverlay } from "./SendingOverlay";
 
@@ -50,7 +53,9 @@ export function CartDrawer() {
   const phone = typed ?? saved;
   const setPhone = setTyped;
 
-  const [snapshot, setSnapshot] = useState<LoyaltySnapshot | null>(null);
+  /* The journey comes from the page's one shared lookup. The drawer asks for
+     a fresh one every time it opens (below) — everyone else just reads it. */
+  const { snapshot, status: snapshotStatus } = useLoyalty(phone);
   /* The welcome gift may have been claimed in the hero, long before this
      drawer existed, so for that one offer "applied" is the shared claim rather
      than drawer state. Every other reward is chosen here and only here. */
@@ -75,21 +80,12 @@ export function CartDrawer() {
     whatsappUrl: string;
   } | null>(null);
 
-  /* Look the customer up once the number is plausible — and again whenever
-     the drawer opens, because a Bite may have been confirmed at the cart
-     since they last looked. */
+  /* Look the customer up again whenever the drawer opens: a Bite may have
+     been confirmed at the stall since they last looked, and this is the one
+     screen where a stale reward turns into an argument at the counter. */
   useEffect(() => {
-    const digits = phone.replace(/\D/g, "");
-    if (!open || digits.length < 10) return;
-
-    let cancelled = false;
-    fetchSnapshot(phone)
-      .then((data) => !cancelled && setSnapshot(data))
-      .catch(() => !cancelled && setSnapshot(null));
-
-    return () => {
-      cancelled = true;
-    };
+    if (!open) return;
+    void refreshSnapshot(phone);
   }, [phone, open]);
 
   useEffect(() => {
@@ -166,6 +162,10 @@ export function CartDrawer() {
     if (result.ok) {
       placeOrder(); // file it locally too, so "your last order" still works
       setPlaced({ code: result.code, snapshot: result.snapshot, whatsappUrl: result.whatsappUrl });
+      /* The server just told us where they now stand — hand it to the shared
+         store so the hero ticket and the menu ladder move with the cart
+         instead of waiting for the next page load. */
+      putSnapshot(phone, result.snapshot);
       setApplied(false);
       setChosen(null);
       window.open(result.whatsappUrl, "_blank", "noopener,noreferrer");
@@ -266,13 +266,16 @@ export function CartDrawer() {
                       key={bowl.id}
                       className="flex items-start justify-between gap-4 border-b border-ink-900/8 pb-4"
                     >
-                      <div className="min-w-0">
-                        <p className="font-medium text-ink-900">{bowl.name}</p>
-                        <p className="mt-0.5 text-xs text-muted">{category.title}</p>
-                        <p className="mt-1 text-sm text-ink-500">
-                          {menu.currency}
-                          {bowl.price} each
-                        </p>
+                      <div className="flex min-w-0 items-start gap-3">
+                        <ProductThumb id={bowl.id} name={bowl.name} />
+                        <div className="min-w-0">
+                          <p className="font-medium text-ink-900">{bowl.name}</p>
+                          <p className="mt-0.5 text-xs text-muted">{category.title}</p>
+                          <p className="mt-1 text-sm text-ink-500">
+                            {menu.currency}
+                            {bowl.price} each
+                          </p>
+                        </div>
                       </div>
                       <div className="flex shrink-0 items-center gap-3">
                         <div className="flex items-center rounded-full border border-ink-900/12">
@@ -306,8 +309,15 @@ export function CartDrawer() {
 
                   {preview.giftLine && (
                     <li className="flex items-center justify-between gap-4 rounded-xl bg-fresh-100 px-4 py-3">
-                      <span className="text-sm font-medium text-ink-900">
-                        {preview.giftLine.name}
+                      <span className="flex min-w-0 items-center gap-3">
+                        <ProductThumb
+                          id={preview.giftLine.id}
+                          name={preview.giftLine.name}
+                          className="size-9"
+                        />
+                        <span className="truncate text-sm font-medium text-ink-900">
+                          {preview.giftLine.name}
+                        </span>
                       </span>
                       <span className="text-sm font-semibold text-fresh-600">FREE</span>
                     </li>
@@ -328,6 +338,7 @@ export function CartDrawer() {
               >
                 <RewardPanel
                   snapshot={snapshot}
+                  loading={snapshotStatus === "loading" && !snapshot}
                   applied={rewardActive}
                   offerClaimed={offerClaimed}
                   chosenProductId={chosen}
@@ -535,9 +546,12 @@ function LastOrder({ order, onReorder }: { order: StoredOrder; onReorder: () => 
 
       <ul className="mt-3 space-y-1">
         {order.items.map((item) => (
-          <li key={item.id} className="flex justify-between gap-3 text-sm text-ink-700">
-            <span className="min-w-0 truncate">
-              {item.qty} × {item.name}
+          <li key={item.id} className="flex items-center justify-between gap-3 text-sm text-ink-700">
+            <span className="flex min-w-0 items-center gap-2.5">
+              <ProductThumb id={item.id} name={item.name} className="size-8" />
+              <span className="min-w-0 truncate">
+                {item.qty} × {itemLabel(item.id, item.name)}
+              </span>
             </span>
             <span className="shrink-0 text-ink-500 tabular-nums">
               {menu.currency}
