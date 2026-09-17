@@ -61,6 +61,11 @@ export function AdminPanel() {
      effect and state is only ever set from its callbacks. */
   const [refresh, setRefresh] = useState(0);
   const [loading, setLoading] = useState(true);
+  /* Formatted at fetch time, not at render time. Staff leave this page open
+     on a phone beside the cart, so the one thing the list cannot tell them
+     is how old it is — an order placed two minutes ago looks exactly like no
+     order at all. */
+  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -79,7 +84,11 @@ export function AdminPanel() {
         if (!cancelled) setError("Couldn't load orders");
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (cancelled) return;
+        setLoading(false);
+        setUpdatedAt(
+          new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+        );
       });
 
     return () => {
@@ -192,9 +201,14 @@ export function AdminPanel() {
             <p className="mt-1 text-sm text-ink-500">
               Confirm an order once the customer has paid at the cart.
             </p>
+            {updatedAt && (
+              <p className="mt-1 text-xs text-muted">
+                {loading ? "Checking…" : `Updated ${updatedAt}`}
+              </p>
+            )}
           </div>
 
-          <div className="flex gap-1.5">
+          <div className="flex items-center gap-1.5">
             {(["pending", "completed", "all"] as Filter[]).map((f) => (
               <button
                 key={f}
@@ -212,6 +226,24 @@ export function AdminPanel() {
                 {f}
               </button>
             ))}
+
+            {/* Orders arrive while this page sits open; nothing pushes them
+                here. One tap re-reads the list — the same path a confirm
+                already takes, so there is no second way to load orders. */}
+            <button
+              type="button"
+              onClick={() => {
+                setLoading(true);
+                setError(null);
+                setRefresh((n) => n + 1);
+              }}
+              disabled={loading}
+              aria-label="Refresh orders"
+              title="Refresh orders"
+              className="grid size-9 shrink-0 place-items-center rounded-full border border-ink-900/12 text-ink-700 transition-colors hover:border-gold-500 disabled:opacity-50"
+            >
+              <RefreshIcon spinning={loading} />
+            </button>
           </div>
         </div>
 
@@ -378,6 +410,24 @@ export function AdminPanel() {
         </button>
       </div>
     </Shell>
+  );
+}
+
+function RefreshIcon({ spinning }: { spinning: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={`size-4 ${spinning ? "animate-spin" : ""}`}
+    >
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <path d="M21 3v6h-6" />
+    </svg>
   );
 }
 

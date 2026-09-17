@@ -210,7 +210,6 @@ export const orders = {
   reorder: "Order this again",
   placedPrefix: "Sent",
   emptyHistory: "Nothing ordered from this device yet.",
-  historyNote: "Saved on this device only.",
 };
 
 export const why = {

@@ -641,7 +641,6 @@ function LastOrder({ order, onReorder }: { order: StoredOrder; onReorder: () => 
         {orderCopy.reorder}
       </button>
 
-      <p className="mt-2 text-center text-[0.7rem] text-muted">{orderCopy.historyNote}</p>
     </div>
   );
 }
