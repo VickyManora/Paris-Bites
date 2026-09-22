@@ -527,6 +527,9 @@ export const cart = {
   submit: "Order on WhatsApp",
   note: "We'll confirm within minutes. No login, no payment upfront.",
   savings: "Combo saving",
+  /* Used where the line already says "Combo applied", so the longer label
+     would read "Combo applied · … · Combo saving ₹29". */
+  savingsShort: "you save",
   total: "Total",
   /* Shown when the phone has no connection at all. It says the cart is safe
      because that is the customer's actual worry, and it does not offer to

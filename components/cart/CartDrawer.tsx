@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useOffline } from "next/offline";
 import { AnimatePresence, motion } from "motion/react";
 import { cart as copy, links, menu, orders as orderCopy } from "@/lib/content";
@@ -106,6 +106,14 @@ export function CartDrawer() {
     [isWelcome, claimOffer, releaseOffer],
   );
   const [chosen, setChosen] = useState<string | null>(null);
+
+  /* Whether to show the name and number as fields or as a line of text.
+     Set by the Change button and by typing — never by an effect watching
+     whether the details look complete, which would collapse the fields
+     under a first-time customer the moment they typed their tenth digit. */
+  const [editingDetails, setEditingDetails] = useState(false);
+  const phoneRef = useRef<HTMLInputElement>(null);
+
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [placed, setPlaced] = useState<{
@@ -168,6 +176,12 @@ export function CartDrawer() {
 
     if (phone.replace(/\D/g, "").length < 10) {
       setError("Add your WhatsApp number so we can confirm your order.");
+      /* The field scrolls with the order now, so it can be off-screen when
+         the button is pressed. An error about a field you cannot see is
+         just a dead end. */
+      setEditingDetails(true);
+      phoneRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+      phoneRef.current?.focus({ preventScroll: true });
       return;
     }
 
@@ -292,7 +306,7 @@ export function CartDrawer() {
               </button>
             </header>
 
-            <div className="relative flex-1 overflow-y-auto px-6 py-5">
+            <div className="relative flex-1 overflow-y-auto px-6 py-4">
               <SendingOverlay show={sending} />
 
               {placed ? (
@@ -319,24 +333,39 @@ export function CartDrawer() {
                   )}
                 </div>
               ) : (
-                <ul className="space-y-4">
+                <ul className="space-y-3">
                   {lines.map(({ bowl, category, qty }) => (
                     <li
                       key={bowl.id}
-                      className="flex items-start justify-between gap-4 border-b border-ink-900/8 pb-4"
+                      className="flex items-center justify-between gap-4 border-b border-ink-900/8 pb-3"
                     >
-                      <div className="flex min-w-0 items-start gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
                         <ProductThumb id={bowl.id} name={bowl.name} />
+                        {/* category and unit price share a line: a third line
+                            here costs 20px on every row, which is a whole
+                            bowl's worth of screen by the third one */}
                         <div className="min-w-0">
                           <p className="font-medium text-ink-900">{bowl.name}</p>
-                          <p className="mt-0.5 text-xs text-muted">{category.title}</p>
-                          <p className="mt-1 text-sm text-ink-500">
-                            {menu.currency}
-                            {bowl.price} each
+                          <p className="mt-0.5 text-xs text-muted">
+                            {category.title} · {menu.currency}
+                            {bowl.price}
+                            {/* the line total above already says ₹149 when
+                                there is one of them; "each" only earns its
+                                place, and its line wrap, when there are more */}
+                            {qty > 1 ? " each" : ""}
                           </p>
                         </div>
                       </div>
-                      <div className="flex shrink-0 items-center gap-3">
+                      {/* Price above the stepper, not beside it. Side by
+                          side these two took 164px of a 360px screen and
+                          left the name about 76px, which wrapped "Oreo
+                          Licious Bowl" onto three lines and made the row
+                          taller than the space it was saving. */}
+                      <div className="flex shrink-0 flex-col items-end gap-1.5">
+                        <span className="text-sm font-semibold text-ink-900 tabular-nums">
+                          {menu.currency}
+                          {bowl.price * qty}
+                        </span>
                         <div className="flex items-center rounded-full border border-ink-900/12">
                           <button
                             type="button"
@@ -358,10 +387,6 @@ export function CartDrawer() {
                             +
                           </button>
                         </div>
-                        <span className="w-14 text-right text-sm font-semibold text-ink-900 tabular-nums">
-                          {menu.currency}
-                          {bowl.price * qty}
-                        </span>
                       </div>
                     </li>
                   ))}
@@ -383,6 +408,69 @@ export function CartDrawer() {
                   )}
                 </ul>
               )}
+
+              {/* Everything below the items used to live in the fixed footer,
+                 which on a 360x640 phone left the cart itself 40px — three
+                 bowls in a 40px window. Only the total and the button are
+                 worth pinning; these scroll with the order they describe.
+                 A side benefit on mobile: a field in a scrollable area can
+                 be scrolled out from under the keyboard, where one pinned to
+                 the bottom of the screen cannot. */}
+              {lines.length > 0 && !placed && (
+                <div className="mt-6 space-y-4 border-t border-ink-900/8 pt-5">
+                  <RewardPanel
+                    snapshot={snapshot}
+                    loading={snapshotStatus === "loading" && !snapshot}
+                    applied={rewardActive}
+                    offerClaimed={offerClaimed}
+                    chosenProductId={chosen}
+                    cartProductIds={cartProductIds}
+                    onApply={() => setApplied(true)}
+                    onChoose={(id) => setChosen(id)}
+                    onRemove={() => {
+                      setApplied(false);
+                      setChosen(null);
+                    }}
+                  />
+
+                  {pricing.combosApplied.length > 0 && (
+                    <p className="text-xs text-ink-700">
+                      <span className="font-semibold text-gold-600">Combo applied</span>
+                      {pricing.combosApplied.length === 1 && (
+                        <>
+                          {" · "}
+                          {pricing.combosApplied[0].count > 1
+                            ? `${pricing.combosApplied[0].count} × `
+                            : ""}
+                          2 {pricing.combosApplied[0].category.title} at {menu.currency}
+                          {pricing.combosApplied[0].category.combo}
+                        </>
+                      )}
+                      {" · "}
+                      <span className="font-semibold text-gold-600">
+                        {copy.savingsShort} {menu.currency}
+                        {pricing.savings}
+                      </span>
+                    </p>
+                  )}
+
+                  <ContactDetails
+                    name={name}
+                    phone={phone}
+                    onName={(v) => {
+                      setEditingDetails(true);
+                      setName(v);
+                    }}
+                    onPhone={(v) => {
+                      setEditingDetails(true);
+                      setPhone(v);
+                    }}
+                    editing={editingDetails}
+                    onEdit={() => setEditingDetails(true)}
+                    phoneRef={phoneRef}
+                  />
+                </div>
+              )}
             </div>
 
             {lines.length > 0 && !placed && (
@@ -394,70 +482,13 @@ export function CartDrawer() {
                 /* safe-bottom keeps the Order button clear of the home
                    indicator once installed; --safe-extra preserves the py-5
                    it already had rather than replacing it */
-                style={{ ["--safe-extra" as string]: "1.25rem" }}
-                className={`safe-bottom border-t border-ink-900/10 bg-cream-100 px-6 pt-5 ${
+                style={{ ["--safe-extra" as string]: "0.875rem" }}
+                className={`safe-bottom border-t border-ink-900/10 bg-cream-100 px-6 pt-4 ${
                   sending ? "hidden sm:block" : ""
                 }`}
               >
-                <RewardPanel
-                  snapshot={snapshot}
-                  loading={snapshotStatus === "loading" && !snapshot}
-                  applied={rewardActive}
-                  offerClaimed={offerClaimed}
-                  chosenProductId={chosen}
-                  cartProductIds={cartProductIds}
-                  onApply={() => setApplied(true)}
-                  onChoose={(id) => setChosen(id)}
-                  onRemove={() => {
-                    setApplied(false);
-                    setChosen(null);
-                  }}
-                />
-
-                {pricing.combosApplied.length > 0 && (
-                  <div className="mb-4 rounded-xl border border-gold-500/30 bg-blush-100 px-4 py-3">
-                    {pricing.combosApplied.map((c) => (
-                      <p key={c.category.id} className="text-xs text-ink-700">
-                        <span className="font-semibold text-gold-600">Combo applied ·</span>{" "}
-                        {c.count > 1 ? `${c.count} × ` : ""}2 {c.category.title} at{" "}
-                        {menu.currency}
-                        {c.category.combo}
-                      </p>
-                    ))}
-                    <p className="mt-1 text-xs font-semibold text-gold-600">
-                      {copy.savings}: {menu.currency}
-                      {pricing.savings}
-                    </p>
-                  </div>
-                )}
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label className="block">
-                    <span className="kicker">{copy.nameLabel}</span>
-                    <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder={copy.namePlaceholder}
-                      autoComplete="name"
-                      className="mt-2 w-full rounded-full border border-ink-900/12 bg-cream-50 px-5 py-3 text-sm text-ink-900 outline-none transition-colors placeholder:text-muted focus:border-gold-500"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="kicker">WhatsApp number</span>
-                    <input
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="10-digit mobile"
-                      inputMode="tel"
-                      autoComplete="tel"
-                      className="mt-2 w-full rounded-full border border-ink-900/12 bg-cream-50 px-5 py-3 text-sm text-ink-900 outline-none transition-colors placeholder:text-muted focus:border-gold-500"
-                    />
-                  </label>
-                </div>
-
                 {preview.reward && (
-                  <div className="mt-4 flex items-baseline justify-between text-sm">
+                  <div className="flex items-baseline justify-between text-sm">
                     <span className="text-ink-500">{preview.reward.label}</span>
                     <span className="font-semibold text-fresh-600 tabular-nums">
                       {preview.reward.amount > 0
@@ -483,7 +514,7 @@ export function CartDrawer() {
                   type="button"
                   onClick={send}
                   disabled={sending}
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-full bg-ink-900 px-6 py-4 text-sm font-medium text-cream-50 transition-colors hover:bg-gold-600 disabled:opacity-60"
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-full bg-ink-900 px-6 py-4 text-sm font-medium text-cream-50 transition-colors hover:bg-gold-600 disabled:opacity-60"
                 >
                   {sending ? "Placing your order…" : copy.submit}
                   <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
@@ -498,7 +529,7 @@ export function CartDrawer() {
                   </svg>
                 </button>
 
-                <div className="mt-3 flex items-center justify-between">
+                <div className="mt-2 flex items-center justify-between">
                   <p className="text-[0.7rem] text-muted">{copy.note}</p>
                   <button
                     type="button"
@@ -514,6 +545,88 @@ export function CartDrawer() {
         </>
       )}
     </AnimatePresence>
+  );
+}
+
+/**
+ * The name and number, shown as a line of text once we know them.
+ *
+ * Two input fields are 168px of a 640px phone — the largest single block in
+ * the drawer — and for a returning customer they are two boxes displaying
+ * what the browser already remembered. So they collapse to one row until
+ * there is a reason to show them: nothing known yet, or Change pressed. A
+ * first-time customer sees the fields straight away and loses no tap; a
+ * returning one gets the space back.
+ */
+function ContactDetails({
+  name,
+  phone,
+  onName,
+  onPhone,
+  editing,
+  onEdit,
+  phoneRef,
+}: {
+  name: string;
+  phone: string;
+  onName: (v: string) => void;
+  onPhone: (v: string) => void;
+  editing: boolean;
+  onEdit: () => void;
+  phoneRef: React.RefObject<HTMLInputElement | null>;
+}) {
+  const digits = phone.replace(/\D/g, "");
+  const known = name.trim().length > 0 && digits.length >= 10;
+
+  if (known && !editing) {
+    // the last ten digits: the number they typed, not the 91 the server adds
+    const local = digits.slice(-10);
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-ink-900/10 bg-cream-100 px-4 py-3">
+        <p className="min-w-0 truncate text-sm text-ink-900">
+          <span className="font-medium">{name.trim()}</span>
+          <span className="text-muted"> · </span>
+          <span className="text-ink-700 tabular-nums">
+            {local.slice(0, 5)} {local.slice(5)}
+          </span>
+        </p>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="shrink-0 text-xs text-muted underline underline-offset-2 transition-colors hover:text-ink-700"
+        >
+          Change
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <label className="block">
+        <span className="kicker">{copy.nameLabel}</span>
+        <input
+          value={name}
+          onChange={(e) => onName(e.target.value)}
+          placeholder={copy.namePlaceholder}
+          autoComplete="name"
+          className="mt-2 w-full rounded-full border border-ink-900/12 bg-cream-50 px-5 py-3 text-sm text-ink-900 outline-none transition-colors placeholder:text-muted focus:border-gold-500"
+        />
+      </label>
+
+      <label className="block">
+        <span className="kicker">WhatsApp number</span>
+        <input
+          ref={phoneRef}
+          value={phone}
+          onChange={(e) => onPhone(e.target.value)}
+          placeholder="10-digit mobile"
+          inputMode="tel"
+          autoComplete="tel"
+          className="mt-2 w-full rounded-full border border-ink-900/12 bg-cream-50 px-5 py-3 text-sm text-ink-900 outline-none transition-colors placeholder:text-muted focus:border-gold-500"
+        />
+      </label>
+    </div>
   );
 }
 
