@@ -21,7 +21,7 @@ import {
   eligibleProducts,
   isEligibleProduct,
 } from "./lib/loyalty/config";
-import { heroTicket } from "./lib/content";
+import { heroTicket, menu } from "./lib/content";
 import {
   canClaimWelcome,
   completionMessage,
@@ -284,14 +284,39 @@ const freeBowl = (await loyaltyState(db, alice.id)).rewards.find(
 )!;
 const qFree = quote({
   items: [{ id: "oreo-licious", qty: 1 }],
-  reward: { type: "ORDER_6_FREE_BOWL", productId: "tiramisu" },
+  reward: { type: "ORDER_6_FREE_BOWL", productId: "kitkat-break" },
 });
 check("   a free bowl is a gift line, not a priced one",
-  qFree.giftLine?.id === "tiramisu" && qFree.lines.length === 1,
+  qFree.giftLine?.id === "kitkat-break" && qFree.lines.length === 1,
 );
 check("   eligible free-bowl list is bowls only, no waffles",
   eligibleProducts("ORDER_6_FREE_BOWL").every((p) => !p.id.startsWith("waffle")),
 );
+
+/* Signature only. This reward stacks on the 2-for combo, and a free Premium
+   bowl on top of a ₹399 pair was ₹707 of dessert for ₹399 — the deepest
+   discount on the site. Widening this back is a money decision, so it has
+   to fail a test rather than pass a review. */
+{
+  const free = eligibleProducts("ORDER_6_FREE_BOWL");
+  const premium = menu.categories.find((c) => c.id === "premium")!.items;
+  check(
+    "   the free bowl is capped to Signature Bowls",
+    free.length > 0 && free.every((p) => !premium.some((q) => q.id === p.id)),
+    free.map((p) => `${p.name} ₹${p.price}`).join(" · "),
+  );
+  check(
+    "   so no Premium bowl can be claimed free",
+    premium.every((p) => !isEligibleProduct("ORDER_6_FREE_BOWL", p.id)),
+  );
+  // the worst case is now bounded by the dearest Signature bowl
+  const dearest = Math.max(...free.map((p) => p.price));
+  check(
+    "   and the most it can give away is one Signature bowl",
+    dearest <= Math.max(...menu.categories.find((c) => c.id === "signature")!.items.map((p) => p.price)),
+    `₹${dearest}`,
+  );
+}
 
 /* 18. The free bowl was spent on the 6th order above. Trying to spend the
    same reward again is the attack this guards: one journey, one free bowl. */
@@ -329,7 +354,7 @@ const bob = await upsertCustomer(db, { phone: "7447360802", name: "Bob" });
 // 13/14. tampering
 const tampered = quote({
   items: [{ id: "death-by-chocolate", qty: 1 }],
-  reward: { type: "ORDER_6_FREE_BOWL", productId: "nutella-bliss" },
+  reward: { type: "ORDER_6_FREE_BOWL", productId: "kitkat-break" },
 });
 check("13. client cannot send its own price — the server prices from the catalogue",
   tampered.lines[0].bowl.price === 149,
@@ -337,7 +362,7 @@ check("13. client cannot send its own price — the server prices from the catal
 const bobState = await loyaltyState(db, bob.id);
 check("14. a reward id the customer never earned is rejected",
   validateRedemption({
-    state: bobState, rewardId: freeBowl.id, productId: "tiramisu", cartProductIds: ["oreo-licious"],
+    state: bobState, rewardId: freeBowl.id, productId: "kitkat-break", cartProductIds: ["oreo-licious"],
   }).ok === false,
   "reward belongs to another customer",
 );
@@ -365,19 +390,20 @@ check(
 );
 
 /* The bug this guards: a gifted item is not in the subtotal, so subtracting
-   its price discounted the items the customer WAS paying for — a free ₹199
-   bowl wiped out a ₹159 bowl and handed over both for nothing. */
+   its price discounted the items the customer WAS paying for — a free bowl
+   dearer than the one being bought wiped it out and handed over both for
+   nothing. Gift ₹169 against a ₹159 purchase reproduces that shape. */
 {
   const q = quote({
     items: [{ id: "oreo-licious", qty: 1 }],
-    reward: { type: "ORDER_6_FREE_BOWL", productId: "tiramisu" },
+    reward: { type: "ORDER_6_FREE_BOWL", productId: "kitkat-break" },
   });
   check(
     "   a free bowl does not also discount the bowls being paid for",
-    q.total === 159 && q.giftLine?.id === "tiramisu",
+    q.total === 159 && q.giftLine?.id === "kitkat-break",
     `charged ₹${q.total}, expected ₹159`,
   );
-  check("   and its worth still counts as a saving", q.totalSaved === 199, `₹${q.totalSaved}`);
+  check("   and its worth still counts as a saving", q.totalSaved === 169, `₹${q.totalSaved}`);
 }
 
 console.log("\n── order lifecycle ──");

@@ -185,8 +185,13 @@ export const MILESTONES: Milestone[] = [
     label: "6th Bite",
     type: "ORDER_6_FREE_BOWL",
     short: "FREE Bowl 👑",
-    detail: "Any bowl on the menu, free",
-    mechanic: { kind: "free-item", eligible: { categories: [SIGNATURE, "premium"] } },
+    detail: "Any Signature Bowl, free",
+    /* Signature only, not Premium. This reward stacks on top of the 2-for
+       combo, and a free Premium bowl on a ₹399 pair meant ₹707 of dessert
+       for ₹399 — the deepest discount on the site, handed to the customer
+       who had already proven they come back. A Signature bowl keeps it a
+       headline prize without that. */
+    mechanic: { kind: "free-item", eligible: { categories: [SIGNATURE] } },
     completedHeadline: "6th Bite complete! 👑",
     completedBody: "You're officially a Bite Club VIP. Your FREE Bowl reward is unlocked.",
   },
