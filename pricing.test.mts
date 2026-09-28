@@ -1,141 +1,157 @@
-import { menu } from "./lib/content";
+import { menu, waffles, type Category } from "./lib/content";
 import { priceCart, findBowl, itemLabel, whatsappMessage, type CartLine } from "./lib/pricing";
+import { productId } from "./lib/product-id";
 
 const line = (id: string, qty: number): CartLine => {
   const f = findBowl(id);
   if (!f) throw new Error("unknown bowl " + id);
   return { ...f, qty };
 };
+const mini = (id: string, qty: number) => line(productId(id, "mini"), qty);
 
-/* `comboTotal` is the price after 2-for pricing and BEFORE the website
-   offer; these cases pin the combo maths on its own. The website discount
-   is checked separately below, because it is a flat percentage of exactly
-   this number and would otherwise hide a combo bug behind a rounding. */
+/* The 2-for combos were retired with the September 2026 repricing: two Full
+   Signature bowls come to ₹248 where the combo asked ₹299, which is not an
+   offer. So a cart is now the plain sum of its lines, and these cases pin
+   that — including the shapes that USED to be discounted, because a combo
+   quietly coming back is a price change nobody decided. */
 const cases: [string, CartLine[], number, number][] = [
-  // label, lines, expected comboTotal, expected combo savings
-  ["1 signature", [line("death-by-chocolate", 1)], 149, 0],
-  ["2 signature (combo wins)", [line("death-by-chocolate", 1), line("oreo-licious", 1)], 299, 9],
-  ["2× same cheapest signature (combo must NOT apply)", [line("death-by-chocolate", 2)], 298, 0],
-  ["3 signature", [line("death-by-chocolate", 1), line("oreo-licious", 1), line("kitkat-break", 1)], 448, 29],
-  ["4 signature", [line("death-by-chocolate", 2), line("oreo-licious", 1), line("kitkat-break", 1)], 597, 29],
-  ["2 premium", [line("nutella-bliss", 1), line("blueberry-bliss", 1)], 399, 69],
-  ["cross-category, no pair", [line("death-by-chocolate", 1), line("nutella-bliss", 1)], 388, 0],
-  ["2 sig + 2 prem", [line("death-by-chocolate", 1), line("oreo-licious", 1), line("nutella-bliss", 1), line("blueberry-bliss", 1)], 698, 78],
+  // label, lines, expected total, expected savings
+  ["1 signature", [line("death-by-chocolate", 1)], 119, 0],
+  ["2 signature (no combo any more)", [line("death-by-chocolate", 1), line("oreo-licious", 1)], 248, 0],
+  ["2× the same signature", [line("death-by-chocolate", 2)], 238, 0],
+  ["3 signature", [line("death-by-chocolate", 1), line("oreo-licious", 1), line("kitkat-break", 1)], 387, 0],
+  ["2 premium", [line("nutella-bliss", 1), line("blueberry-bliss", 1)], 348, 0],
+  ["cross-category", [line("death-by-chocolate", 1), line("nutella-bliss", 1)], 298, 0],
+  ["2 sig + 2 prem", [line("death-by-chocolate", 1), line("oreo-licious", 1), line("nutella-bliss", 1), line("blueberry-bliss", 1)], 596, 0],
   ["empty", [], 0, 0],
   ["qty zero is ignored", [line("death-by-chocolate", 0)], 0, 0],
-  // waffles are their own category with no 2-for offer — always list price
-  ["1 waffle", [line("waffle-death-by-chocolate", 1)], 149, 0],
-  ["2 waffles, no combo applied", [line("waffle-death-by-chocolate", 2)], 298, 0],
-  ["2 different waffles", [line("waffle-nutella-indulgence", 1), line("waffle-biscoff-bliss", 1)], 378, 0],
+  ["1 waffle", [line("waffle-death-by-chocolate", 1)], 129, 0],
+  ["2 waffles", [line("waffle-death-by-chocolate", 2)], 258, 0],
+  ["2 different waffles", [line("waffle-nutella-indulgence", 1), line("waffle-biscoff-bliss", 1)], 338, 0],
   ["all six waffles", [
     line("waffle-death-by-chocolate", 1), line("waffle-kitkat-break", 1),
     line("waffle-strawberry-bliss", 1), line("waffle-blueberry-dream", 1),
     line("waffle-nutella-indulgence", 1), line("waffle-biscoff-bliss", 1),
-  ], 1024, 0],
-  // a bowls combo must still apply when waffles share the cart
-  ["2 signature bowls + 1 waffle", [line("oreo-licious", 2), line("waffle-kitkat-break", 1)], 299 + 159, 19],
+  ], 904, 0],
+  ["bowls and a waffle together", [line("oreo-licious", 2), line("waffle-kitkat-break", 1)], 258 + 139, 0],
 ];
 
 let fail = 0;
-for (const [label, lines, comboTotal, savings] of cases) {
+for (const [label, lines, total, savings] of cases) {
   const p = priceCart(lines);
-  const ok = p.comboTotal === comboTotal && p.savings === savings;
+  const ok = p.total === total && p.savings === savings;
   if (!ok) fail++;
   console.log(
-    `${ok ? "PASS" : "FAIL"}  ${label}\n      combo total ${p.comboTotal} (want ${comboTotal})  savings ${p.savings} (want ${savings})  list ${p.listTotal}  count ${p.count}  payable ${p.total}`,
+    `${ok ? "PASS" : "FAIL"}  ${label}\n      total ${p.total} (want ${total})  savings ${p.savings} (want ${savings})  list ${p.listTotal}  count ${p.count}`,
   );
 }
 
-/* The blanket website discount is gone — Bite Club owns discounts now, and
-   they are tested in loyalty.test.mts against the real database. What must
-   hold here is that priceCart itself takes nothing off beyond the combos. */
-console.log("\n--- no discount beyond the combos ---");
+console.log("\n── nothing comes off the list price here ──");
 for (const [label, lines] of cases) {
   const p = priceCart(lines);
-  const ok = p.total === p.comboTotal && p.totalSaved === p.savings;
+  const ok = p.total === p.listTotal && p.totalSaved === 0;
   if (!ok) fail++;
-  console.log(`${ok ? "PASS" : "FAIL"}  ${label} — total ${p.total} = combo total ${p.comboTotal}`);
+  console.log(`${ok ? "PASS" : "FAIL"}  ${label} — ₹${p.total} = list ₹${p.listTotal}`);
 }
 
-// an empty cart must not produce a discount, or a WhatsApp message claiming one
-{
-  const p = priceCart([]);
-  const ok = p.total === 0 && p.totalSaved === 0;
-  if (!ok) fail++;
-  console.log(`${ok ? "PASS" : "FAIL"}  empty cart costs nothing`);
-}
-
-/* The same dessert name is sold as a bowl and as a waffle. Whoever packs the
-   bag reads the order as a flat list, so the two must never print alike. */
-{
-  const bowl = itemLabel("death-by-chocolate");
-  const waffle = itemLabel("waffle-death-by-chocolate");
-  const ok =
-    bowl === "Death by Chocolate (Bowl)" &&
-    waffle === "Death by Chocolate (Waffle)" &&
-    // a name that already says "Bowl" is not made to say it twice
-    itemLabel("oreo-licious") === "Oreo Licious Bowl";
-  if (!ok) fail++;
-  console.log(`${ok ? "PASS" : "FAIL"}  a bowl and a waffle of the same name read differently`);
-  console.log(`        ${bowl} · ${waffle}`);
-}
-
-/* Mini Bowls never join a 2-for. The owner's rule, and it holds by
-   construction — combos are per category and Mini Bowls carries none — but
-   it is the kind of thing a later "tidy-up" merges into Signature Bowls
-   without realising it hands away a ₹299 pair for ₹69 + ₹149. */
+console.log("\n── Mini is a size, priced as one ──");
 {
   const cases: [string, CartLine[], number][] = [
-    ["2 minis are just two minis", [line("mini-bowl", 2)], 138],
-    ["a mini never pairs with a signature bowl", [line("mini-bowl", 1), line("death-by-chocolate", 1)], 218],
-    [
-      "nor does it subsidise one",
-      [line("mini-bowl", 2), line("death-by-chocolate", 1)],
-      287,
-    ],
-    [
-      "and it leaves a real signature pair alone",
-      [line("mini-bowl", 1), line("death-by-chocolate", 1), line("oreo-licious", 1)],
-      69 + 299,
-    ],
+    ["a Mini bowl is its own price", [mini("death-by-chocolate", 1)], 69],
+    ["two Minis", [mini("death-by-chocolate", 2)], 138],
+    ["a Mini and a Full of the same dessert are separate lines",
+      [mini("death-by-chocolate", 1), line("death-by-chocolate", 1)], 69 + 119],
+    ["the dearest Mini bowl", [mini("nutella-bliss", 1)], 99],
+    ["a Mini waffle", [mini("waffle-death-by-chocolate", 1)], 65],
+    ["Minis across the menu",
+      [mini("oreo-licious", 1), mini("tiramisu", 1), mini("waffle-biscoff-bliss", 1)], 69 + 79 + 85],
   ];
-
   for (const [label, lines, expected] of cases) {
     const p = priceCart(lines);
     const ok = p.total === expected;
     if (!ok) fail++;
     console.log(`${ok ? "PASS" : "FAIL"}  ${label} — ₹${p.total} (want ₹${expected})`);
   }
-}
 
-// an item that has left the menu still has to print something readable
-{
-  const ok =
-    itemLabel("mini-bowl-reward") === "Mini Bowl" &&
-    itemLabel("gone-forever", "Retired Bowl") === "Retired Bowl" &&
-    itemLabel("gone-forever") === "gone-forever";
+  // a Mini and a Full of one dessert must not collapse into a single line
+  const two = priceCart([mini("oreo-licious", 1), line("oreo-licious", 1)]);
+  const ok = two.count === 2 && two.total === 69 + 129;
   if (!ok) fail++;
-  console.log(`${ok ? "PASS" : "FAIL"}  an off-menu item still prints a name`);
+  console.log(`${ok ? "PASS" : "FAIL"}  two sizes of one dessert stay two lines — ${two.count} items, ₹${two.total}`);
 }
 
-// sanity: where a category HAS a combo, it must beat the two cheapest in it.
-// Mini Bowls carries no combo — a 2-for on a ₹69 bowl is not an offer anyone
-// needs — so there is nothing here to check.
-for (const c of menu.categories) {
-  if (c.combo === undefined) {
-    console.log(`\nNOTE ${c.title}: no combo offer`);
-    continue;
+console.log("\n── what the slip says ──");
+{
+  const checks: [string, string][] = [
+    ["death-by-chocolate", "Death by Chocolate (Bowl)"],
+    [productId("death-by-chocolate", "mini"), "Death by Chocolate (Bowl) · Mini"],
+    ["oreo-licious", "Oreo Licious Bowl"],
+    [productId("oreo-licious", "mini"), "Oreo Licious Bowl · Mini"],
+    ["waffle-death-by-chocolate", "Death by Chocolate (Waffle)"],
+    [productId("waffle-death-by-chocolate", "mini"), "Death by Chocolate (Waffle) · Mini"],
+    // retired ids: orders placed under them are still in the book
+    ["mini-bowl", "Mini Bowl"],
+    ["mini-bowl-reward", "Mini Bowl"],
+    ["gone-forever", "gone-forever"],
+  ];
+  for (const [id, want] of checks) {
+    const got = itemLabel(id);
+    const ok = got === want;
+    if (!ok) fail++;
+    console.log(`${ok ? "PASS" : "FAIL"}  ${id} → "${got}"${ok ? "" : ` (want "${want}")`}`);
   }
-  const cheapest = c.items.map((i) => i.price).sort((a, b) => a - b).slice(0, 2);
-  console.log(
-    `\nNOTE ${c.title}: combo ₹${c.combo} vs two cheapest ₹${cheapest[0] + cheapest[1]} → ${
-      c.combo < cheapest[0] + cheapest[1] ? "always a saving" : "no saving on the cheapest pair (guard handles it)"
-    }`,
+  const ok = itemLabel("gone-forever", "Retired Bowl") === "Retired Bowl";
+  if (!ok) fail++;
+  console.log(`${ok ? "PASS" : "FAIL"}  an off-menu item still prints its stored name`);
+}
+
+console.log("\n── the price list itself ──");
+{
+  const all = [...menu.categories, waffles.category].flatMap((c) =>
+    c.items.map((i) => ({ ...i, category: c.title })),
   );
+
+  const cheaper = all.filter((i) => i.mini >= i.price);
+  if (cheaper.length) fail++;
+  console.log(
+    `${cheaper.length === 0 ? "PASS" : "FAIL"}  every Mini costs less than its Full`,
+    cheaper.map((i) => i.name).join(", "),
+  );
+
+  /* A struck-through price that is not above the one being charged is not a
+     discount, it is decoration — and the customer cannot tell the
+     difference. This is the test that stops one being invented. */
+  const bogus = all.filter((i) => i.original !== undefined && i.original <= i.price);
+  if (bogus.length) fail++;
+  console.log(
+    `${bogus.length === 0 ? "PASS" : "FAIL"}  every struck-through price is above the price charged`,
+    bogus.map((i) => `${i.name} ₹${i.original}→₹${i.price}`).join(", "),
+  );
+
+  const noPrev = all.filter((i) => i.original === undefined);
+  console.log(`NOTE  ${all.length} products; ${noPrev.length} with no previous price${noPrev.length ? ": " + noPrev.map((i) => i.name).join(", ") : ""}`);
+
+  /* The combos are gone; if one reappears the cart silently reprices. The
+     annotation is what lets this see `combo` at all — with none of the
+     literals carrying it, TypeScript narrows it away. */
+  const categories: Category[] = [...menu.categories, waffles.category];
+  const withCombo = categories.filter((c) => c.combo !== undefined);
+  if (withCombo.length) fail++;
+  console.log(
+    `${withCombo.length === 0 ? "PASS" : "FAIL"}  no category carries a 2-for combo`,
+    withCombo.map((c) => `${c.title} ₹${c.combo}`).join(", "),
+  );
+
+  for (const c of categories) {
+    console.log(
+      `NOTE  ${c.title}: Mini ₹${Math.min(...c.items.map((i) => i.mini))}–₹${Math.max(...c.items.map((i) => i.mini))}` +
+      `  Full ₹${Math.min(...c.items.map((i) => i.price))}–₹${Math.max(...c.items.map((i) => i.price))}`,
+    );
+  }
 }
 
 console.log("\n--- sample WhatsApp message ---");
-console.log(whatsappMessage([line("death-by-chocolate", 1), line("oreo-licious", 1), line("nutella-bliss", 1)], "Likhit"));
+console.log(whatsappMessage([line("death-by-chocolate", 1), mini("oreo-licious", 1), line("nutella-bliss", 1)], "Likhit"));
 
 console.log(`\n${fail === 0 ? "ALL PASS" : fail + " FAILURES"}`);
 process.exit(fail === 0 ? 0 : 1);

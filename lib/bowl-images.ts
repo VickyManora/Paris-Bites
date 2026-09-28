@@ -1,3 +1,4 @@
+import { baseProductId } from "./product-id";
 import type { StaticImageData } from "next/image";
 
 import biscoffDelight from "@/public/bowls/biscoff-delight.png";
@@ -31,5 +32,6 @@ export const bowlPhotos: Record<string, StaticImageData> = {
 };
 
 export function bowlPhoto(id: string): StaticImageData | undefined {
-  return bowlPhotos[id];
+  // a Mini is the same dessert in a smaller cup, so it shares the photograph
+  return bowlPhotos[baseProductId(id)];
 }

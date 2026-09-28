@@ -8,7 +8,7 @@ import { wafflePhoto } from "@/lib/waffle-images";
  *
  * Order lists are the one place bowls and waffles sit in the same column,
  * and the same dessert name is sold as both — "Death by Chocolate" is a bowl
- * at ₹149 and a waffle at ₹149. A name has to be read; a picture does not,
+ * and a waffle at different prices. A name has to be read; a picture does not,
  * which matters most on the admin screen, where someone is packing a bag
  * with one hand.
  *

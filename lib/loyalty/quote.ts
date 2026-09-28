@@ -99,7 +99,10 @@ export function quote({
         applied = {
           type: reward.type,
           productId: reward.productId,
-          label: `${item.bowl.name} for ${menu.currency}${mechanic.price}`,
+          /* itemLabel, not the bare name: two sizes of one dessert share a
+             name, and a receipt that does not say which was repriced is a
+             receipt nobody can check. */
+          label: `${itemLabel(item.bowl.id)} for ${menu.currency}${mechanic.price}`,
           amount,
         };
       }
@@ -115,15 +118,15 @@ export function quote({
 
            And it does NOT discount the rest of the order. Subtracting its
            price from `comboTotal` — which never contained it — made a free
-           ₹199 bowl wipe out a ₹159 bowl the customer was paying for, and
+           gift wipe out a cheaper bowl the customer was paying for, and
            hand them the lot for nothing. The gift is free; everything else
            costs what it costs. */
-        gift = { id: item.bowl.id, name: item.bowl.name };
+        gift = { id: item.bowl.id, name: itemLabel(item.bowl.id) };
         giftValue = item.bowl.price;
         applied = {
           type: reward.type,
           productId: item.bowl.id,
-          label: `FREE ${item.bowl.name}`,
+          label: `FREE ${itemLabel(item.bowl.id)}`,
           // what the gift is worth, for the receipt and the "you saved" line
           amount: item.bowl.price,
         };

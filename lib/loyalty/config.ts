@@ -11,6 +11,8 @@
  * ─────────────────────────────────────────────────────────────
  */
 import { menu, waffles, type Bowl, type Category } from "../content";
+import { sizedBowl } from "../pricing";
+import type { Size } from "../product-id";
 
 /** the journey is six orders long; milestone 1 is the first completed order */
 export const JOURNEY_LENGTH = 6;
@@ -34,8 +36,13 @@ export type RewardMechanic =
 /**
  * Which products a reward may be spent on, expressed against the catalogue's
  * own category ids — never against product names, which change.
+ *
+ * `size` matters now that every bowl is sold as a Mini and a Full at two
+ * prices. The 5th Bite gives away a Mini; the ₹99 bowl and the free bowl are
+ * Full ones, and must say so — ₹99 for a ₹69 Mini is not a reward, and a
+ * free "bowl" that arrives Mini is a disappointment dressed as a prize.
  */
-export type EligibilityRule = { categories: string[] };
+export type EligibilityRule = { categories: string[]; size: Size };
 
 export type Milestone = {
   /** 1-based position in the journey */
@@ -88,7 +95,7 @@ export type Milestone = {
    keys off the category id. Adding a bowl to that category makes it eligible
    automatically — nothing here needs editing. */
 const SIGNATURE = "signature";
-const MINI = "mini";
+const PREMIUM = "premium";
 
 export const MILESTONES: Milestone[] = [
   {
@@ -138,7 +145,11 @@ export const MILESTONES: Milestone[] = [
     type: "ORDER_3_SIGNATURE_BOWL_99",
     short: "Signature Bowl ₹99",
     detail: "Any Signature Bowl, yours for ₹99",
-    mechanic: { kind: "fixed-price", price: 99, eligible: { categories: [SIGNATURE] } },
+    mechanic: {
+      kind: "fixed-price",
+      price: 99,
+      eligible: { categories: [SIGNATURE], size: "full" },
+    },
     completedHeadline: "3rd Bite complete!",
     completedBody: "Your ₹99 Signature Bowl reward is unlocked.",
   },
@@ -169,8 +180,11 @@ export const MILESTONES: Milestone[] = [
     label: "5th Bite",
     type: "ORDER_5_FREE_MINI_BOWL",
     short: "FREE Mini Bowl",
-    detail: "On the house, with your bowl",
-    mechanic: { kind: "free-item", eligible: { categories: [MINI] } },
+    detail: "Any Mini bowl, on the house",
+    mechanic: {
+      kind: "free-item",
+      eligible: { categories: [SIGNATURE, PREMIUM], size: "mini" },
+    },
     completedHeadline: "5th Bite complete!",
     completedBody: "Your FREE Mini Bowl is unlocked. One more Bite to your FREE Bowl!",
   },
@@ -186,12 +200,16 @@ export const MILESTONES: Milestone[] = [
     type: "ORDER_6_FREE_BOWL",
     short: "FREE Bowl 👑",
     detail: "Any Signature Bowl, free",
-    /* Signature only, not Premium. This reward stacks on top of the 2-for
-       combo, and a free Premium bowl on a ₹399 pair meant ₹707 of dessert
-       for ₹399 — the deepest discount on the site, handed to the customer
-       who had already proven they come back. A Signature bowl keeps it a
-       headline prize without that. */
-    mechanic: { kind: "free-item", eligible: { categories: [SIGNATURE] } },
+    /* Signature only, not Premium, and Full rather than Mini. The cap was
+       set when this stacked on the 2-for combo and a free Premium bowl made
+       it the deepest discount on the site; the combos are gone, but the
+       reasoning holds — a free ₹179 Nutella Bliss on every sixth order is a
+       different business from a free ₹139 KitKat Break, and the prize reads
+       just as well either way. */
+    mechanic: {
+      kind: "free-item",
+      eligible: { categories: [SIGNATURE], size: "full" },
+    },
     completedHeadline: "6th Bite complete! 👑",
     completedBody: "You're officially a Bite Club VIP. Your FREE Bowl reward is unlocked.",
   },
@@ -225,23 +243,6 @@ export function milestoneForType(type: RewardType): Milestone | undefined {
   return MILESTONES.find((m) => m.type === type);
 }
 
-/**
- * The Mini Bowl.
- *
- * A real ₹69 product on the menu, and the prize for the 5th Bite. It is read
- * from the catalogue rather than described again here: a second definition
- * would be a second price, and the two would drift the first time one
- * changed.
- */
-export const MINI_BOWL: Bowl = (() => {
-  const found = menu.categories
-    .find((c) => c.id === MINI)
-    ?.items.find((i) => i.id === "mini-bowl");
-
-  if (!found) throw new Error("The Mini Bowl is missing from the menu in lib/content.ts");
-  return found;
-})();
-
 /** every product a reward may be spent on, by reward type */
 export function eligibleProducts(type: RewardType): Bowl[] {
   const rule = milestoneForType(type)?.mechanic;
@@ -250,7 +251,9 @@ export function eligibleProducts(type: RewardType): Bowl[] {
   const ids = new Set(rule.eligible.categories);
   // annotated, so the mixed bowl/waffle literals collapse to one product type
   const categories: Category[] = [...menu.categories, waffles.category];
-  return categories.filter((c) => ids.has(c.id)).flatMap((c) => c.items);
+  return categories
+    .filter((c) => ids.has(c.id))
+    .flatMap((c) => c.items.map((item) => sizedBowl(item, rule.eligible.size)));
 }
 
 export function isEligibleProduct(type: RewardType, productId: string): boolean {

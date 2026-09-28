@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   motion,
   useAnimationControls,
@@ -10,6 +10,7 @@ import {
 
 import { menu } from "@/lib/content";
 import type { Bowl as Product } from "@/lib/content";
+import { productId, type Size } from "@/lib/product-id";
 import { useCart } from "../cart/CartContext";
 import { ease, riseItem } from "../motion/Reveal";
 import { useTilt } from "../motion/Tilt";
@@ -46,7 +47,14 @@ export function ProductCard({
   headingLevel?: "h3" | "h4";
 }) {
   const { qtys, add, setQty } = useCart();
-  const qty = qtys[product.id] ?? 0;
+
+  /* Which size the Add button will add. Full is the default because it is
+     the main product; the Mini's price is on the card either way, never
+     behind this toggle — it is the entry price and hiding it would defeat
+     the point of having one. */
+  const [size, setSize] = useState<Size>("full");
+  const orderedId = productId(product.id, size);
+  const qty = qtys[orderedId] ?? 0;
   const { ref, rotateX, rotateY, glareBackground, handlers, reduce } =
     useTilt<HTMLDivElement>({ max: 9 });
   const pop = useAnimationControls();
@@ -82,10 +90,12 @@ export function ProductCard({
     ([pointerTilt, viewportTilt]) => pointerTilt + viewportTilt,
   );
 
-  const noun = addLabel ? `${product.name} ${addLabel}` : product.name;
+  const noun = `${addLabel ? `${product.name} ${addLabel}` : product.name} (${
+    size === "mini" ? "Mini" : "Full"
+  })`;
 
   const addWithPop = () => {
-    add(product.id);
+    add(orderedId);
     if (reduce) return;
     // the product reacts to the tap, so the button feels connected to it
     pop.start({
@@ -160,13 +170,50 @@ export function ProductCard({
         </div>
 
         <div className="mt-5 flex flex-1 items-end">
-          <div className="flex w-full items-center justify-between gap-4 border-t border-ink-900/8 pt-4 [transform:translateZ(30px)]">
-            <span className="display text-lg">
-              <span className="font-sans text-[0.72em] font-medium text-gold-600">
-                {menu.currency}
-              </span>
-              {product.price}
-            </span>
+          <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-ink-900/8 pt-4 [transform:translateZ(30px)]">
+            {/* Both prices, always. The Mini is the entry point into the
+                menu, so it is never one tap away behind a selected state —
+                you can read what the cheapest way in costs without touching
+                anything. Tapping a price is also what chooses it. */}
+            <div
+              role="group"
+              aria-label={`${product.name} size`}
+              className="flex items-center gap-1.5"
+            >
+              {(["mini", "full"] as const).map((s) => {
+                const on = size === s;
+                const amount = s === "mini" ? product.mini : product.price;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSize(s)}
+                    aria-pressed={on}
+                    className={`flex items-baseline gap-1.5 rounded-full px-3.5 py-2 transition-colors ${
+                      on
+                        ? "bg-ink-900 text-cream-50"
+                        : "border border-ink-900/12 text-ink-700 hover:border-gold-500"
+                    }`}
+                  >
+                    <span className="text-[0.6rem] font-semibold uppercase tracking-wider opacity-70">
+                      {s === "mini" ? "Mini" : "Full"}
+                    </span>
+                    <span className="text-sm font-semibold tabular-nums">
+                      {menu.currency}
+                      {amount}
+                    </span>
+                    {/* the price this size used to be — only on the Full,
+                        because the Mini is new and never had one */}
+                    {s === "full" && product.original !== undefined && (
+                      <s className="text-[0.7rem] tabular-nums opacity-55">
+                        {menu.currency}
+                        {product.original}
+                      </s>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
             {qty === 0 ? (
               <motion.button
@@ -184,7 +231,7 @@ export function ProductCard({
                 <motion.button
                   type="button"
                   aria-label={`Remove one ${noun}`}
-                  onClick={() => setQty(product.id, qty - 1)}
+                  onClick={() => setQty(orderedId, qty - 1)}
                   whileTap={reduce ? undefined : { scale: 0.85 }}
                   className="flex size-11 items-center justify-center rounded-full text-ink-700 transition-colors hover:bg-cream-200 lg:size-9"
                 >
@@ -203,7 +250,7 @@ export function ProductCard({
                   type="button"
                   aria-label={`Add one ${noun}`}
                   onClick={() => {
-                    setQty(product.id, qty + 1);
+                    setQty(orderedId, qty + 1);
                     if (!reduce)
                       pop.start({
                         scale: [1, 1.1, 1],

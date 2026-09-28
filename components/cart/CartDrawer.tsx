@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { cart as copy, links, menu, orders as orderCopy } from "@/lib/content";
 import { formatOrderDate, type StoredOrder } from "@/lib/orders";
 import { itemLabel, whatsappMessage } from "@/lib/pricing";
+import { isMini } from "@/lib/product-id";
 import { quote } from "@/lib/loyalty/quote";
 import { JOURNEY_LENGTH, WELCOME_OFFER_ID, biteClub } from "@/lib/loyalty/config";
 import {
@@ -347,11 +348,20 @@ export function CartDrawer() {
                         <div className="min-w-0">
                           <p className="font-medium text-ink-900">{bowl.name}</p>
                           <p className="mt-0.5 text-xs text-muted">
-                            {category.title} · {menu.currency}
+                            {category.title}
+                            {/* Two sizes of one dessert are two lines with
+                                the same name; without this they are
+                                indistinguishable, and the ₹69 one looks like
+                                an error in the total. */}
+                            {isMini(bowl.id) && (
+                              <span className="font-semibold text-ink-700"> · Mini</span>
+                            )}
+                            {" · "}
+                            {menu.currency}
                             {bowl.price}
-                            {/* the line total above already says ₹149 when
-                                there is one of them; "each" only earns its
-                                place, and its line wrap, when there are more */}
+                            {/* the line total above already says the price
+                                when there is one of them; "each" only earns
+                                its place, and its line wrap, when more */}
                             {qty > 1 ? " each" : ""}
                           </p>
                         </div>
@@ -369,7 +379,7 @@ export function CartDrawer() {
                         <div className="flex items-center rounded-full border border-ink-900/12">
                           <button
                             type="button"
-                            aria-label={`Decrease ${bowl.name} quantity`}
+                            aria-label={`Decrease ${itemLabel(bowl.id)} quantity`}
                             onClick={() => setQty(bowl.id, qty - 1)}
                             className="flex size-8 items-center justify-center rounded-full text-ink-700 transition-colors hover:bg-cream-200"
                           >
@@ -380,7 +390,7 @@ export function CartDrawer() {
                           </span>
                           <button
                             type="button"
-                            aria-label={`Increase ${bowl.name} quantity`}
+                            aria-label={`Increase ${itemLabel(bowl.id)} quantity`}
                             onClick={() => setQty(bowl.id, qty + 1)}
                             className="flex size-8 items-center justify-center rounded-full text-ink-700 transition-colors hover:bg-cream-200"
                           >

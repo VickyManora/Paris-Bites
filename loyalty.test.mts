@@ -16,12 +16,12 @@ import { PGlite } from "@electric-sql/pglite";
 
 import {
   MILESTONES,
-  MINI_BOWL,
   biteClub,
   eligibleProducts,
   isEligibleProduct,
 } from "./lib/loyalty/config";
 import { heroTicket, menu } from "./lib/content";
+import { productId } from "./lib/product-id";
 import {
   canClaimWelcome,
   completionMessage,
@@ -253,12 +253,13 @@ check("   but the copy still celebrates it", completionMessage(4).headline.inclu
 const mini = (await loyaltyState(db, alice.id)).rewards.find(
   (x) => x.type === "ORDER_5_FREE_MINI_BOWL",
 )!;
-r = await orderAndComplete(alice.id, [{ id: "nutella-bliss", qty: 1 }], mini.id, MINI_BOWL.id);
+const FREE_MINI = productId("oreo-licious", "mini");
+r = await orderAndComplete(alice.id, [{ id: "nutella-bliss", qty: 1 }], mini.id, FREE_MINI);
 check("7. the 5th order gives a free Mini Bowl and unlocks the free Bowl",
   r.state.completedOrders === 5 &&
   r.state.rewards.some((x) => x.type === "ORDER_6_FREE_BOWL" && x.status === "available"),
 );
-check("   the mini bowl rode along free", r.order.gift_product_id === MINI_BOWL.id);
+check("   the mini bowl rode along free", r.order.gift_product_id === FREE_MINI);
 
 // the 6th order takes the free Bowl and finishes the journey
 const freeBowlReward = (await loyaltyState(db, alice.id)).rewards.find(
@@ -357,7 +358,8 @@ const tampered = quote({
   reward: { type: "ORDER_6_FREE_BOWL", productId: "kitkat-break" },
 });
 check("13. client cannot send its own price — the server prices from the catalogue",
-  tampered.lines[0].bowl.price === 149,
+  tampered.lines[0].bowl.price === 119,
+  `₹${tampered.lines[0].bowl.price}`,
 );
 const bobState = await loyaltyState(db, bob.id);
 check("14. a reward id the customer never earned is rejected",
@@ -374,25 +376,35 @@ check("14b. loyalty state is read from the server, not the request",
 
 // the Mini Bowl is a real ₹69 product now, so it CAN be bought — what must
 // not happen is it sneaking into a reward it was never meant for
-const bought = quote({ items: [{ id: MINI_BOWL.id, qty: 2 }] });
+const MINI_OREO = productId("oreo-licious", "mini");
+const bought = quote({ items: [{ id: MINI_OREO, qty: 2 }] });
 check(
-  "   the Mini Bowl is purchasable at its menu price",
-  bought.lines.length === 1 && bought.total === MINI_BOWL.price * 2,
-  `₹${bought.total} for 2 × ₹${MINI_BOWL.price}`,
+  "   a Mini is purchasable at its own menu price",
+  bought.lines.length === 1 && bought.total === 69 * 2,
+  `₹${bought.total} for 2 × ₹69`,
 );
+/* ₹99 for a ₹69 Mini is not a reward, it is a surcharge — and a "FREE Bowl"
+   that arrives Mini is a prize the customer did not win. Both rewards name
+   the Full size, and these are what hold them to it. */
 check(
-  "   a ₹69 Mini Bowl is not eligible for the ₹99 Signature reward",
-  !isEligibleProduct("ORDER_3_SIGNATURE_BOWL_99", MINI_BOWL.id),
+  "   a ₹69 Mini is not eligible for the ₹99 Signature reward",
+  !isEligibleProduct("ORDER_3_SIGNATURE_BOWL_99", MINI_OREO),
 );
 check(
   "   nor for the 6th Bite's free bowl",
-  !isEligibleProduct("ORDER_6_FREE_BOWL", MINI_BOWL.id),
+  !isEligibleProduct("ORDER_6_FREE_BOWL", MINI_OREO),
+);
+check(
+  "   and the 5th Bite's free Mini is Minis only — no Full sneaks in",
+  eligibleProducts("ORDER_5_FREE_MINI_BOWL").every((p) => p.id.endsWith(":mini")) &&
+    eligibleProducts("ORDER_5_FREE_MINI_BOWL").length > 0,
+  eligibleProducts("ORDER_5_FREE_MINI_BOWL").map((p) => `${p.name} ₹${p.price}`).join(" · "),
 );
 
 /* The bug this guards: a gifted item is not in the subtotal, so subtracting
    its price discounted the items the customer WAS paying for — a free bowl
    dearer than the one being bought wiped it out and handed over both for
-   nothing. Gift ₹169 against a ₹159 purchase reproduces that shape. */
+   nothing. Gift ₹139 against a ₹129 purchase reproduces that shape. */
 {
   const q = quote({
     items: [{ id: "oreo-licious", qty: 1 }],
@@ -400,10 +412,10 @@ check(
   });
   check(
     "   a free bowl does not also discount the bowls being paid for",
-    q.total === 159 && q.giftLine?.id === "kitkat-break",
-    `charged ₹${q.total}, expected ₹159`,
+    q.total === 129 && q.giftLine?.id === "kitkat-break",
+    `charged ₹${q.total}, expected ₹129`,
   );
-  check("   and its worth still counts as a saving", q.totalSaved === 169, `₹${q.totalSaved}`);
+  check("   and its worth still counts as a saving", q.totalSaved === 139, `₹${q.totalSaved}`);
 }
 
 console.log("\n── order lifecycle ──");

@@ -252,7 +252,19 @@ export type Bowl = {
   id: string;
   name: string;
   note: string;
+  /** the Full size — what `price` has always meant, so nothing downstream moved */
   price: number;
+  /** the Mini size: the entry price, and never hidden on the card */
+  mini: number;
+  /**
+   * What the Full size cost before the September 2026 repricing, shown
+   * struck through beside the new one.
+   *
+   * Only ever a price this menu actually charged. An "original" we never
+   * asked for is an invented discount, and the customer has no way to tell
+   * the difference — which is precisely why it must not be done.
+   */
+  original?: number;
   badge?: string;
   tone: "dark" | "berry" | "caramel" | "cream";
 };
@@ -288,13 +300,14 @@ export const menu = {
       title: "Signature Bowls",
       kind: "Bowl" as const,
       serves: "Serves 1 · Rich & filling",
-      combo: 299,
       items: [
         {
           id: "death-by-chocolate",
           name: "Death by Chocolate",
           note: "Rich dark chocolate bowl with brownie chunks, chocolate sauce & whipped cream",
-          price: 149,
+          price: 119,
+        mini: 69,
+        original: 149,
           badge: "Bestseller",
           tone: "dark",
         },
@@ -302,7 +315,9 @@ export const menu = {
           id: "oreo-licious",
           name: "Oreo Licious Bowl",
           note: "Crushed Oreos with vanilla cream and chocolate fudge",
-          price: 159,
+          price: 129,
+        mini: 69,
+        original: 159,
           badge: "Most loved",
           tone: "cream",
         },
@@ -310,27 +325,10 @@ export const menu = {
           id: "kitkat-break",
           name: "KitKat Break Bowl",
           note: "Crunchy KitKat pieces with chocolate mousse and caramel",
-          price: 169,
+          price: 139,
+        mini: 69,
+        original: 169,
           tone: "caramel",
-        },
-      ],
-    },
-    {
-      /* Its own category, deliberately not part of Signature Bowls. Two
-         rules key off that category id: the 2-for-₹299 combo, and the
-         3rd-Bite "any Signature Bowl for ₹99" reward. A ₹69 bowl inside
-         either would be nonsense — ₹99 for a ₹69 bowl is not a reward. */
-      id: "mini",
-      title: "Mini Bowls",
-      kind: "Bowl" as const,
-      serves: "A smaller portion · perfect alongside",
-      items: [
-        {
-          id: "mini-bowl",
-          name: "Mini Bowl",
-          note: "A little Paris Bites bowl — the same chocolate, a lighter portion.",
-          price: 69,
-          tone: "cream",
         },
       ],
     },
@@ -339,13 +337,14 @@ export const menu = {
       title: "Premium Bowls",
       kind: "Bowl" as const,
       serves: "Serves 1 · Indulgent & luxurious",
-      combo: 399,
       items: [
         {
           id: "tiramisu",
           name: "Tiramisu Indulgence",
           note: "Coffee-soaked ladyfingers with mascarpone cream and cocoa dust",
-          price: 199,
+          price: 159,
+        mini: 79,
+        original: 199,
           badge: "Signature",
           tone: "cream",
         },
@@ -353,34 +352,46 @@ export const menu = {
           id: "strawberry-bliss",
           name: "Strawberry Chocolate Bliss",
           note: "Fresh strawberries with chocolate cream and berry compote",
-          price: 219,
+          price: 169,
+        mini: 89,
+        original: 219,
           tone: "berry",
         },
         {
           id: "biscoff-delight",
           name: "Biscoff Delight Bowl",
           note: "Biscoff cookie butter bowl with caramel swirls and cookie crumbles",
-          price: 229,
+          price: 179,
+        mini: 99,
+        original: 229,
           tone: "caramel",
         },
         {
           id: "blueberry-bliss",
           name: "Blueberry Chocolate Bliss",
           note: "Fresh blueberries with chocolate cream and white chocolate",
-          price: 229,
+          price: 169,
+        mini: 89,
+        original: 229,
           tone: "berry",
         },
         {
           id: "nutella-bliss",
           name: "Nutella Bliss Bowl",
           note: "Creamy Nutella base with hazelnut crunch and chocolate drizzle",
-          price: 239,
+          price: 179,
+        mini: 99,
+        original: 239,
           tone: "dark",
         },
       ],
     },
   ] satisfies Category[],
-  comboNote: "Combo deals are applied automatically when you add 2 bowls from the same category.",
+  /* Every bowl comes in two sizes and the card shows both, so the line under
+     the grid explains the choice rather than a 2-for offer. The combos were
+     retired with the September 2026 repricing: two Full Signature bowls came
+     to ₹248 against a ₹299 combo, which is not an offer, it is a surcharge. */
+  sizeNote: "Every bowl comes in two sizes — Mini to try, Full to share the evening with.",
 };
 
 /* ── Waffles ───────────────────────────────────────────────
@@ -409,42 +420,54 @@ export const waffles = {
         id: "waffle-death-by-chocolate",
         name: "Death by Chocolate",
         note: "Cocoa waffle layered with dark chocolate and vanilla cream.",
-        price: 149,
+        price: 129,
+        mini: 65,
+        original: 149,
         tone: "dark" as const,
       },
       {
         id: "waffle-kitkat-break",
         name: "KitKat Break",
         note: "Cocoa waffle stacked with KitKat fingers and chocolate spread.",
-        price: 159,
+        price: 139,
+        mini: 70,
+        original: 159,
         tone: "caramel" as const,
       },
       {
         id: "waffle-strawberry-bliss",
         name: "Strawberry Bliss",
         note: "Strawberry waffle layered with fresh strawberries and vanilla cream.",
-        price: 169,
+        price: 149,
+        mini: 75,
+        original: 169,
         tone: "berry" as const,
       },
       {
         id: "waffle-blueberry-dream",
         name: "Blueberry Dream",
         note: "Golden waffle layered with fresh blueberries and cream.",
-        price: 169,
+        price: 149,
+        mini: 75,
+        original: 169,
         tone: "berry" as const,
       },
       {
         id: "waffle-nutella-indulgence",
         name: "Nutella Indulgence",
         note: "Cocoa waffle folded over layers of hazelnut chocolate spread.",
-        price: 189,
+        price: 169,
+        mini: 85,
+        original: 189,
         tone: "dark" as const,
       },
       {
         id: "waffle-biscoff-bliss",
         name: "Biscoff Bliss",
         note: "Golden waffle layered with Biscoff spread and biscuit crumb.",
-        price: 189,
+        price: 169,
+        mini: 85,
+        original: 189,
         tone: "caramel" as const,
       },
     ],

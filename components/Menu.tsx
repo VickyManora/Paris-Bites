@@ -45,17 +45,6 @@ export function Menu() {
                 </h3>
                 <p className="mt-1 text-xs text-muted">{category.serves}</p>
               </div>
-              {/* only where there is one — Mini Bowls carries no 2-for, and
-                  the strip was rendering "Any 2 for ₹" with nothing after it */}
-              {category.combo !== undefined && (
-                <p className="text-xs text-ink-500">
-                  <span className="font-semibold text-gold-600">
-                    Any 2 for {menu.currency}
-                    {category.combo}
-                  </span>{" "}
-                  · applied automatically
-                </p>
-              )}
             </Reveal>
 
             {/* the bowls sit half outside their card, so the grid carries the
@@ -89,7 +78,7 @@ export function Menu() {
         ))}
 
         <Reveal className="mt-12">
-          <p className="text-center text-xs text-muted">{menu.comboNote}</p>
+          <p className="text-center text-xs text-muted">{menu.sizeNote}</p>
         </Reveal>
       </div>
     </section>

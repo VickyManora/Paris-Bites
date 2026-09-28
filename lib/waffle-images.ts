@@ -1,3 +1,4 @@
+import { baseProductId } from "./product-id";
 import type { StaticImageData } from "next/image";
 
 import biscoffBliss from "@/public/waffles/waffle-biscoff-bliss.png";
@@ -30,5 +31,6 @@ export const wafflePhotos: Record<string, StaticImageData> = {
 };
 
 export function wafflePhoto(id: string): StaticImageData | undefined {
-  return wafflePhotos[id];
+  // a Mini is the same dessert in a smaller cup, so it shares the photograph
+  return wafflePhotos[baseProductId(id)];
 }

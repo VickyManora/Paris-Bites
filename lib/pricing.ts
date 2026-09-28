@@ -1,5 +1,5 @@
 import { menu, waffles, type Bowl, type Category } from "./content";
-import { MINI_BOWL } from "./loyalty/config";
+import { baseProductId, isMini, productId, type Size } from "./product-id";
 import { properName } from "./names";
 
 export type CartLine = { bowl: Bowl; category: Category; qty: number };
@@ -10,8 +10,35 @@ export const allBowls: { bowl: Bowl; category: Category }[] = [
   waffles.category,
 ].flatMap((category) => category.items.map((bowl) => ({ bowl, category })));
 
+/** every product in both sizes, as the menu offers them */
+export function sizedBowl(bowl: Bowl, size: Size): Bowl {
+  if (size === "full") return bowl;
+  return {
+    ...bowl,
+    id: productId(bowl.id, "mini"),
+    price: bowl.mini,
+    /* A Mini has no former price — it did not exist before this menu — and
+       it carries no "Bestseller" badge, which belongs to the dessert rather
+       than to one size of it and would otherwise print twice on a card. */
+    original: undefined,
+    badge: undefined,
+  };
+}
+
+/**
+ * The product an order line refers to, at the price for its size.
+ *
+ * This is the only place a `:mini` id is unpicked. Everything downstream —
+ * the cart, the combo maths, the quote, the order slip — receives an
+ * ordinary Bowl whose `price` is already right for what was bought, and
+ * never has to know sizes exist.
+ */
 export function findBowl(id: string) {
-  return allBowls.find((b) => b.bowl.id === id);
+  const found = allBowls.find((b) => b.bowl.id === baseProductId(id));
+  if (!found) return undefined;
+  return isMini(id)
+    ? { category: found.category, bowl: sizedBowl(found.bowl, "mini") }
+    : found;
 }
 
 /**
@@ -35,14 +62,22 @@ export function itemLabel(id: string, fallbackName?: string): string {
     /* "Oreo Licious Bowl (Bowl)" helps nobody — a name that already says
        what it is keeps the line short. */
     const saysIt = new RegExp(`\\b${kind}\\b`, "i").test(name);
-    return saysIt ? name : `${name} (${kind})`;
+    const label = saysIt ? name : `${name} (${kind})`;
+    /* The size goes last and always prints for a Mini. Two sizes at two
+       prices means a slip that says only "Oreo Licious Bowl" is an
+       instruction to make the wrong one. Full is the default and stays
+       unmarked, as it reads on the menu. */
+    return isMini(id) ? `${label} · Mini` : label;
   }
 
-  /* Ids that orders were placed under before the catalogue changed. The
-     Mini Bowl was a reward-only item with a different id until it went on
-     the menu at ₹69, and orders carrying the old one are still in the book —
-     staff reading them should see a name, not a slug. */
-  const retired: Record<string, string> = { "mini-bowl-reward": MINI_BOWL.name };
+  /* Ids that orders were placed under before the catalogue changed, kept so
+     the order book stays readable. The Mini Bowl was first a reward-only
+     item, then a ₹69 product of its own; it is now a size of every bowl,
+     and orders carrying either of the old ids are still in the book. */
+  const retired: Record<string, string> = {
+    "mini-bowl": "Mini Bowl",
+    "mini-bowl-reward": "Mini Bowl",
+  };
   if (retired[id]) return retired[id];
 
   return fallbackName ?? id;
@@ -53,10 +88,13 @@ export function itemLabel(id: string, fallbackName?: string): string {
  *
  * A category's `combo` price covers any TWO bowls from that category. Pairs are
  * formed from the most expensive bowls first, so the customer keeps the biggest
- * saving. The combo is only used when it actually beats paying separately —
- * two ₹149 bowls (₹298) must not be "upgraded" to the ₹299 combo.
+ * saving, and the combo is only used when it actually beats paying separately.
  *
- * A category with no `combo` (waffles) is simply summed at list price.
+ * NO CATEGORY CARRIES ONE TODAY. The 2-for offers were retired with the
+ * September 2026 repricing, which cut Full bowls by 20–25% and left every
+ * combo dearer than the two bowls it covered. The machinery stays because it
+ * is correct and guarded — set `combo` on a category and it works — but
+ * anything reading `combosApplied` is currently reading an empty list.
  *
  * There is no blanket website discount any more: Bite Club owns every
  * discount, and a reward is applied on top of this by lib/loyalty/quote.ts.
