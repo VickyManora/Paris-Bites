@@ -397,10 +397,16 @@ function OrdersBody({
   onEdit: (o: book.EventOrder) => void;
   editingId?: string;
 }) {
+  const [query, setQuery] = useState("");
   if (orders.length === 0) return <p className="text-sm text-muted">No orders yet.</p>;
 
+  // by name, or by number ("12" or "#12")
+  const q = query.trim().toLowerCase().replace(/^#/, "");
+  const matches = q
+    ? orders.filter((o) => o.name.toLowerCase().includes(q) || String(o.no) === q)
+    : orders;
   // still to hand over first, then the finished ones
-  const sorted = [...orders.filter((o) => !o.handedOver), ...orders.filter((o) => o.handedOver)];
+  const sorted = [...matches.filter((o) => !o.handedOver), ...matches.filter((o) => o.handedOver)];
   const takings = orders.filter((o) => o.paid).reduce((s, o) => s + o.total, 0);
 
   return (
@@ -409,6 +415,18 @@ function OrdersBody({
         {orders.length} order{orders.length === 1 ? "" : "s"} · received {menu.currency}
         {takings}
       </p>
+      <input
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search name or #number"
+        autoComplete="off"
+        enterKeyHint="search"
+        className="rounded-full border border-ink-900/15 bg-white px-4 py-3 text-base outline-none focus:border-gold-500"
+      />
+      {q && sorted.length === 0 && (
+        <p className="py-4 text-center text-sm text-muted">No order matches “{query.trim()}”.</p>
+      )}
       {sorted.map((o) => (
         <div
           key={o.id}
