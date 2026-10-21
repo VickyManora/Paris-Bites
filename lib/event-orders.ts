@@ -111,6 +111,19 @@ export function resetDay() {
   set([]);
 }
 
+/** how many of each item across these orders, biggest first — the prep list */
+export function tally(orders: EventOrder[]) {
+  const byItem = new Map<string, { id: string; label: string; qty: number }>();
+  for (const o of orders) {
+    for (const i of o.items) {
+      const row = byItem.get(i.id) ?? { id: i.id, label: eventLabel(i.id, i.label), qty: 0 };
+      row.qty += i.qty;
+      byItem.set(i.id, row);
+    }
+  }
+  return [...byItem.values()].sort((a, b) => b.qty - a.qty || a.label.localeCompare(b.label));
+}
+
 export function toggle(id: string, field: "paid" | "handedOver") {
   set(state.map((o) => (o.id === id ? { ...o, [field]: !o[field] } : o)));
 }

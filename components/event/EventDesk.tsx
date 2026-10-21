@@ -18,7 +18,11 @@ import { ProductThumb } from "../product/ProductThumb";
  * localStorage, so a weak signal can never hold up the queue.
  */
 const sections: { id: string; title: string; items: Bowl[] }[] = [
-  { id: "bowls", title: "Bowls", items: menu.categories.flatMap((c): Bowl[] => [...c.items]) },
+  {
+    id: "bowls",
+    title: "Bowls",
+    items: menu.categories.flatMap((c): Bowl[] => [...c.items]),
+  },
   { id: "waffles", title: "Waffles", items: waffles.category.items },
 ];
 
@@ -27,7 +31,10 @@ export function EventDesk() {
   const [size, setSize] = useState<Size>("mini");
   const [cartOpen, setCartOpen] = useState(false);
   const [ordersOpen, setOrdersOpen] = useState(false);
-  const [toast, setToast] = useState<{ text: string; undo?: () => void } | null>(null);
+  const [toast, setToast] = useState<{
+    text: string;
+    undo?: () => void;
+  } | null>(null);
   /** the order being changed, while its items sit in the cart */
   const [editing, setEditing] = useState<book.EventOrder | null>(null);
   const orders = useSyncExternalStore(book.subscribe, book.getSnapshot, book.getServerSnapshot);
@@ -83,7 +90,11 @@ export function EventDesk() {
   };
 
   const startEdit = (o: book.EventOrder) => {
-    if (pricing.count > 0 && !editing && !confirm("The cart has items in it. Replace them with this order?"))
+    if (
+      pricing.count > 0 &&
+      !editing &&
+      !confirm("The cart has items in it. Replace them with this order?")
+    )
       return;
     cartStore.reorder(Object.fromEntries(o.items.map((i) => [i.id, i.qty])));
     setName(o.name);
@@ -164,7 +175,11 @@ export function EventDesk() {
                       aria-label={`Add ${item.name} (${size})`}
                       className="flex flex-col items-center p-1.5 pb-1 text-center active:scale-95"
                     >
-                      <ProductThumb id={id} name={item.name} className="aspect-square w-full border-0" />
+                      <ProductThumb
+                        id={id}
+                        name={item.name}
+                        className="aspect-square w-full border-0"
+                      />
                       <span className="mt-1 line-clamp-2 min-h-[2.2em] text-[0.7rem] font-medium leading-tight text-ink-900">
                         {item.name}
                       </span>
@@ -398,6 +413,7 @@ function OrdersBody({
   editingId?: string;
 }) {
   const [query, setQuery] = useState("");
+  const [view, setView] = useState<"orders" | "summary">("orders");
   if (orders.length === 0) return <p className="text-sm text-muted">No orders yet.</p>;
 
   // by name, or by number ("12" or "#12")
@@ -415,83 +431,123 @@ function OrdersBody({
         {orders.length} order{orders.length === 1 ? "" : "s"} · received {menu.currency}
         {takings}
       </p>
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search name or #number"
-        autoComplete="off"
-        enterKeyHint="search"
-        className="rounded-full border border-ink-900/15 bg-white px-4 py-3 text-base outline-none focus:border-gold-500"
-      />
-      {q && sorted.length === 0 && (
-        <p className="py-4 text-center text-sm text-muted">No order matches “{query.trim()}”.</p>
-      )}
-      {sorted.map((o) => (
-        <div
-          key={o.id}
-          className={`rounded-2xl border border-ink-900/10 bg-white p-4 ${o.handedOver ? "opacity-55" : ""}`}
-        >
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="font-semibold text-ink-900">
-              #{o.no} {o.name}
-            </p>
-            <p className="font-semibold tabular-nums">
-              {menu.currency}
-              {o.total}
-            </p>
-          </div>
-          <ul className="mt-1.5 text-sm text-ink-700">
-            {o.items.map((i) => (
-              <li key={i.id}>
-                {i.qty} × {book.eventLabel(i.id, i.label)}
-              </li>
-            ))}
-          </ul>
-          <div className="mt-3 flex gap-2">
-            <Tick on={o.paid} onClick={() => book.toggle(o.id, "paid")}>
-              Payment received
-            </Tick>
-            <Tick on={o.handedOver} onClick={() => book.toggle(o.id, "handedOver")}>
-              Handed over
-            </Tick>
-          </div>
-          <div className="mt-2 flex gap-4">
-            <button
-              type="button"
-              onClick={() => onEdit(o)}
-              disabled={o.id === editingId}
-              className="py-1 text-xs font-semibold text-ink-700 underline disabled:no-underline disabled:opacity-50"
-            >
-              {o.id === editingId ? "Editing…" : "Edit"}
-            </button>
-            <button
-              type="button"
-              onClick={() => confirm(`Delete order #${o.no} (${o.name})?`) && book.removeOrder(o.id)}
-              className="py-1 text-xs text-muted underline"
-            >
-              Delete
-            </button>
-          </div>
-        </div>
-      ))}
 
-      <button
-        type="button"
-        onClick={() =>
-          confirm(
-            `Start a new day? This deletes all ${orders.length} order${orders.length === 1 ? "" : "s"} and numbering restarts at #1.`,
-          ) && book.resetDay()
-        }
-        className="mt-6 rounded-full border border-red-700/40 py-3 text-xs font-semibold uppercase tracking-wider text-red-700"
-      >
-        Start new day
-      </button>
+      <div className="flex rounded-full bg-cream-200 p-1">
+        {(
+          [
+            ["orders", "Orders"],
+            ["summary", "Summary"],
+          ] as const
+        ).map(([v, label]) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setView(v)}
+            aria-pressed={view === v}
+            className={`flex-1 rounded-full py-2.5 text-xs font-semibold uppercase tracking-wider ${
+              view === v ? "bg-ink-900 text-cream-50" : "text-ink-500"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === "summary" ? (
+        <Summary orders={orders} />
+      ) : (
+        <>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name or #number"
+            autoComplete="off"
+            enterKeyHint="search"
+            className="rounded-full border border-ink-900/15 bg-white px-4 py-3 text-base outline-none focus:border-gold-500"
+          />
+          {q && sorted.length === 0 && (
+            <p className="py-4 text-center text-sm text-muted">
+              No order matches “{query.trim()}”.
+            </p>
+          )}
+          {sorted.map((o) => (
+            <div
+              key={o.id}
+              className={`rounded-2xl border border-ink-900/10 bg-white p-4 ${o.handedOver ? "opacity-55" : ""}`}
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="font-semibold text-ink-900">
+                  #{o.no} {o.name}
+                </p>
+                <p className="font-semibold tabular-nums">
+                  {menu.currency}
+                  {o.total}
+                </p>
+              </div>
+              <ul className="mt-1.5 text-sm text-ink-700">
+                {o.items.map((i) => (
+                  <li key={i.id}>
+                    {i.qty} × {book.eventLabel(i.id, i.label)}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-3 flex gap-2">
+                <Tick on={o.paid} onClick={() => book.toggle(o.id, "paid")}>
+                  Payment received
+                </Tick>
+                <Tick on={o.handedOver} onClick={() => book.toggle(o.id, "handedOver")}>
+                  Handed over
+                </Tick>
+              </div>
+              <div className="mt-2 flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => onEdit(o)}
+                  disabled={o.id === editingId}
+                  className="py-1 text-xs font-semibold text-ink-700 underline disabled:no-underline disabled:opacity-50"
+                >
+                  {o.id === editingId ? "Editing…" : "Edit"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    confirm(`Delete order #${o.no} (${o.name})?`) && book.removeOrder(o.id)
+                  }
+                  className="py-1 text-xs text-muted underline"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+
+          <button
+            type="button"
+            onClick={() =>
+              confirm(
+                `Start a new day? This deletes all ${orders.length} order${orders.length === 1 ? "" : "s"} and numbering restarts at #1.`,
+              ) && book.resetDay()
+            }
+            className="mt-6 rounded-full border border-red-700/40 py-3 text-xs font-semibold uppercase tracking-wider text-red-700"
+          >
+            Start new day
+          </button>
+        </>
+      )}
     </div>
   );
 }
 
-function Tick({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+function Tick({
+  on,
+  onClick,
+  children,
+}: {
+  on: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
   return (
     <button
       type="button"
@@ -534,4 +590,57 @@ function useKeepAwake() {
       lock?.release().catch(() => {});
     };
   }, []);
+}
+
+/**
+ * The prep list: every item still to hand over, added up across orders, so
+ * "5 × Death by Chocolate (Bowl) · Full" can be made in one go. Below it, the
+ * same count for the whole day.
+ */
+function Summary({ orders }: { orders: book.EventOrder[] }) {
+  const open = orders.filter((o) => !o.handedOver);
+  const toMake = book.tally(open);
+  const sold = book.tally(orders);
+  const count = (rows: { qty: number }[]) => rows.reduce((n, r) => n + r.qty, 0);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <section>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-500">
+          To prepare · {count(toMake)} item{count(toMake) === 1 ? "" : "s"} in {open.length} order
+          {open.length === 1 ? "" : "s"}
+        </h3>
+        {toMake.length === 0 ? (
+          <p className="rounded-2xl bg-white p-4 text-sm text-muted">
+            Nothing pending — all handed over.
+          </p>
+        ) : (
+          <ul className="divide-y divide-ink-900/8 rounded-2xl border border-ink-900/10 bg-white">
+            {toMake.map((r) => (
+              <li key={r.id} className="flex items-center gap-4 px-4 py-3">
+                <span className="w-10 shrink-0 text-right text-2xl font-semibold tabular-nums text-ink-900">
+                  {r.qty}
+                </span>
+                <span className="text-sm text-ink-900">{r.label}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-ink-500">
+          Sold today · {count(sold)} item{count(sold) === 1 ? "" : "s"}
+        </h3>
+        <ul className="divide-y divide-ink-900/8 rounded-2xl border border-ink-900/10 bg-white">
+          {sold.map((r) => (
+            <li key={r.id} className="flex items-center gap-4 px-4 py-2.5 text-sm text-ink-700">
+              <span className="w-10 shrink-0 text-right font-semibold tabular-nums">{r.qty}</span>
+              <span>{r.label}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
+  );
 }
