@@ -249,12 +249,17 @@ export type Bowl = {
   id: string;
   name: string;
   note: string;
-  /** the Full size — what `price` has always meant, so nothing downstream moved */
-  price: number;
-  /** the Mini size: the entry price, and never hidden on the card */
-  mini: number;
   /**
-   * What the Full size cost before the September 2026 repricing, shown
+   * The regular size — Medium on a bowl, Regular on a waffle. It is ordered
+   * under the bare id, which is what `price` has always meant.
+   */
+  price: number;
+  /** the Mini size: the entry price */
+  mini: number;
+  /** the Full size; bowls only — a product without one is not sold Full */
+  full?: number;
+  /**
+   * What the regular size cost before the September 2026 repricing, shown
    * struck through beside the new one.
    *
    * Only ever a price this menu actually charged. An "original" we never
@@ -302,9 +307,10 @@ export const menu = {
           id: "death-by-chocolate",
           name: "Death by Chocolate",
           note: "Rich dark chocolate bowl with brownie chunks, chocolate sauce & whipped cream",
-          price: 119,
-        mini: 69,
-        original: 149,
+          price: 129,
+          mini: 79,
+          full: 199,
+          original: 149,
           badge: "Bestseller",
           tone: "dark",
         },
@@ -312,9 +318,10 @@ export const menu = {
           id: "oreo-licious",
           name: "Oreo Licious Bowl",
           note: "Crushed Oreos with vanilla cream and chocolate fudge",
-          price: 129,
-        mini: 69,
-        original: 159,
+          price: 139,
+          mini: 79,
+          full: 209,
+          original: 159,
           badge: "Most loved",
           tone: "cream",
         },
@@ -323,8 +330,9 @@ export const menu = {
           name: "KitKat Break Bowl",
           note: "Crunchy KitKat pieces with chocolate mousse and caramel",
           price: 139,
-        mini: 69,
-        original: 169,
+          mini: 79,
+          full: 209,
+          original: 169,
           tone: "caramel",
         },
       ],
@@ -339,9 +347,10 @@ export const menu = {
           id: "tiramisu",
           name: "Tiramisu Indulgence",
           note: "Coffee-soaked ladyfingers with mascarpone cream and cocoa dust",
-          price: 159,
-        mini: 79,
-        original: 199,
+          price: 169,
+          mini: 89,
+          full: 249,
+          original: 199,
           badge: "Signature",
           tone: "cream",
         },
@@ -350,8 +359,9 @@ export const menu = {
           name: "Strawberry Chocolate Bliss",
           note: "Fresh strawberries with chocolate cream and berry compote",
           price: 169,
-        mini: 89,
-        original: 219,
+          mini: 89,
+          full: 249,
+          original: 219,
           tone: "berry",
         },
         {
@@ -359,8 +369,9 @@ export const menu = {
           name: "Biscoff Delight Bowl",
           note: "Biscoff cookie butter bowl with caramel swirls and cookie crumbles",
           price: 179,
-        mini: 99,
-        original: 229,
+          mini: 99,
+          full: 269,
+          original: 229,
           tone: "caramel",
         },
         {
@@ -368,8 +379,9 @@ export const menu = {
           name: "Blueberry Chocolate Bliss",
           note: "Fresh blueberries with chocolate cream and white chocolate",
           price: 169,
-        mini: 89,
-        original: 229,
+          mini: 89,
+          full: 249,
+          original: 229,
           tone: "berry",
         },
         {
@@ -377,18 +389,19 @@ export const menu = {
           name: "Nutella Bliss Bowl",
           note: "Creamy Nutella base with hazelnut crunch and chocolate drizzle",
           price: 179,
-        mini: 99,
-        original: 239,
+          mini: 99,
+          full: 269,
+          original: 239,
           tone: "dark",
         },
       ],
     },
   ] satisfies Category[],
-  /* Every bowl comes in two sizes and the card shows both, so the line under
-     the grid explains the choice rather than a 2-for offer. The combos were
+  /* Every bowl comes in three sizes and the card shows all of them, so the
+     line under the grid explains the choice rather than a 2-for offer. The combos were
      retired with the September 2026 repricing: two Full Signature bowls came
      to ₹248 against a ₹299 combo, which is not an offer, it is a surcharge. */
-  sizeNote: "Every bowl comes in two sizes — Mini to try, Full to share the evening with.",
+  sizeNote: "Every bowl comes in three sizes — Mini to try, Medium for one, Full to share.",
 };
 
 /* ── Waffles ───────────────────────────────────────────────
@@ -418,7 +431,7 @@ export const waffles = {
         name: "Death by Chocolate",
         note: "Cocoa waffle layered with dark chocolate and vanilla cream.",
         price: 129,
-        mini: 65,
+        mini: 79,
         original: 149,
         tone: "dark" as const,
       },
@@ -427,7 +440,7 @@ export const waffles = {
         name: "KitKat Break",
         note: "Cocoa waffle stacked with KitKat fingers and chocolate spread.",
         price: 139,
-        mini: 70,
+        mini: 89,
         original: 159,
         tone: "caramel" as const,
       },
@@ -436,7 +449,7 @@ export const waffles = {
         name: "Strawberry Bliss",
         note: "Strawberry waffle layered with fresh strawberries and vanilla cream.",
         price: 149,
-        mini: 75,
+        mini: 89,
         original: 169,
         tone: "berry" as const,
       },
@@ -445,7 +458,7 @@ export const waffles = {
         name: "Blueberry Dream",
         note: "Golden waffle layered with fresh blueberries and cream.",
         price: 149,
-        mini: 75,
+        mini: 89,
         original: 169,
         tone: "berry" as const,
       },
@@ -454,7 +467,7 @@ export const waffles = {
         name: "Nutella Indulgence",
         note: "Cocoa waffle folded over layers of hazelnut chocolate spread.",
         price: 169,
-        mini: 85,
+        mini: 99,
         original: 189,
         tone: "dark" as const,
       },
@@ -463,7 +476,7 @@ export const waffles = {
         name: "Biscoff Bliss",
         note: "Golden waffle layered with Biscoff spread and biscuit crumb.",
         price: 169,
-        mini: 85,
+        mini: 99,
         original: 189,
         tone: "caramel" as const,
       },

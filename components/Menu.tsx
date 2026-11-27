@@ -82,6 +82,7 @@ function BowlCard({ bowl, category }: { bowl: BowlType; category: Category }) {
     <ProductCard
       product={bowl}
       categoryTitle={category.title}
+      kind={category.kind}
       headingLevel="h4"
       art={({ className }) => (
         <BowlArt
