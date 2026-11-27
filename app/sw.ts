@@ -69,7 +69,7 @@ const serwist = new Serwist({
     },
     {
       /* Documents and the RSC payloads behind client-side navigation. Cache
-         both or `<Link>` to /bite-club breaks offline even with its HTML
+         both or client-side `<Link>` navigation breaks offline even with its HTML
          cached. Three seconds is long enough for a slow evening 4G and short
          enough that a dead connection does not feel like a hang. */
       matcher: ({ request, url }) =>

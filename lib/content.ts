@@ -87,8 +87,6 @@ export const nav = {
     { label: "Menu", href: "#menu" },
     { label: "Waffles", href: "#waffles" },
     { label: "Visit", href: "#visit" },
-    // the one cross-page link in the nav: Bite Club has its own page
-    { label: "Bite Club", href: "/bite-club" },
   ],
   hours: "Open daily 7–11 PM",
 };
@@ -159,7 +157,6 @@ export const marquee = {
   items: [
     "Prepared fresh after you order",
     "Loved by chocolate lovers in Aundh",
-    "Bite Club rewards on every website order",
     "Open daily 7–11 PM",
     "Aundh, Pune",
   ],
@@ -564,12 +561,11 @@ export const cart = {
 
 /* ── Installing the app ────────────────────────────────────
    Offered once, on the order-sent screen — the moment a customer has just
-   committed and their Bite Club journey has just moved. Nowhere else: an
-   install banner on a menu is the thing people dismiss without reading.
+   committed. Nowhere else: an install banner on a menu is the thing people dismiss without reading.
    ───────────────────────────────────────────────────────── */
 export const install = {
   title: "Keep Paris Bites on your home screen",
-  body: "One tap to reorder, and your Bite Club rewards are always with you.",
+  body: "One tap to reorder your favourites, any time.",
   action: "Add to home screen",
   dismiss: "Not now",
   /* iOS has no install prompt a site may trigger, so Safari gets told how

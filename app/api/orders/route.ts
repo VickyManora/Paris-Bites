@@ -49,8 +49,9 @@ export async function POST(request: Request) {
     phone,
     name,
     items,
-    rewardId: typeof body.rewardId === "string" ? body.rewardId : null,
-    productId: typeof body.productId === "string" ? body.productId : null,
+    // Bite Club is switched off: no reward can be redeemed, whatever is sent
+    rewardId: null,
+    productId: null,
   });
 
   return NextResponse.json(result, { status: result.ok ? 200 : 400 });
