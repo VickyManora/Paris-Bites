@@ -14,7 +14,6 @@ import { BowlArt } from "./art/BowlArt";
 import { Chunk } from "./art/Chunk";
 import { RisingLines, ease } from "./motion/Reveal";
 import { usePointerParallax } from "./motion/Tilt";
-import { RewardTicket } from "./loyalty/RewardTicket";
 import { CountUp } from "./motion/CountUp";
 
 const heroWaffle = wafflePhotos["waffle-biscoff-bliss"];
@@ -84,13 +83,6 @@ export function Hero() {
           style={{ y: copyY, opacity: fade }}
           className="max-w-xl lg:col-start-1 lg:row-start-1"
         >
-          {/* The one thing on the first screen that is about this customer
-              rather than about the shop: the reward they have already earned,
-              and a single tap to go and spend it. Above the headline, because
-              money already banked is a better reason to keep reading than a
-              headline is. */}
-          <RewardTicket className="mb-6 sm:mb-7" />
-
           <h1 className="display text-[clamp(2.7rem,7.4vw,5rem)]">
             <RisingLines lines={hero.headline} />
           </h1>

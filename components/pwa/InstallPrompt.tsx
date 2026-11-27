@@ -10,8 +10,7 @@ import { ease } from "../motion/Reveal";
  * The invitation to keep Paris Bites on the home screen.
  *
  * Shown in one place only — the screen a customer sees straight after
- * sending an order. They have just committed, and their Bite Club journey
- * has just moved; that is the one moment the answer is plausibly yes. A
+ * sending an order. They have just committed; that is the one moment the answer is plausibly yes. A
  * banner on the menu would be dismissed without being read.
  *
  * Two platforms, two mechanics. Chrome fires `beforeinstallprompt`, which we

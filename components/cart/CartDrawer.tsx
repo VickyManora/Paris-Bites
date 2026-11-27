@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useOffline } from "next/offline";
 import { AnimatePresence, motion } from "motion/react";
 import { cart as copy, links, menu, orders as orderCopy } from "@/lib/content";
@@ -8,23 +8,17 @@ import { formatOrderDate, type StoredOrder } from "@/lib/orders";
 import { itemLabel, whatsappMessage } from "@/lib/pricing";
 import { isMini } from "@/lib/product-id";
 import { quote } from "@/lib/loyalty/quote";
-import { JOURNEY_LENGTH, WELCOME_OFFER_ID, biteClub } from "@/lib/loyalty/config";
 import {
-  putSnapshot,
-  refreshSnapshot,
   rememberPhone,
   rememberedPhone,
   serverPhone,
   submitOrder,
   subscribePhone,
-  useLoyalty,
-  type LoyaltySnapshot,
 } from "@/lib/loyalty/client";
 import { useCart } from "./CartContext";
 import { ease } from "../motion/Reveal";
 import { Choco } from "../art/Choco";
 import { ProductThumb } from "../product/ProductThumb";
-import { RewardPanel } from "../loyalty/RewardPanel";
 import { InstallPrompt } from "../pwa/InstallPrompt";
 import { SendingOverlay } from "./SendingOverlay";
 
@@ -68,9 +62,6 @@ export function CartDrawer() {
     orders,
     placeOrder,
     reorder,
-    offerClaimed,
-    claimOffer,
-    releaseOffer,
   } = useCart();
 
   const lastOrder = orders[0];
@@ -88,25 +79,6 @@ export function CartDrawer() {
   const phone = typed ?? saved;
   const setPhone = setTyped;
 
-  /* The journey comes from the page's one shared lookup. The drawer asks for
-     a fresh one every time it opens (below) — everyone else just reads it. */
-  const { snapshot, status: snapshotStatus } = useLoyalty(phone);
-  /* The welcome gift may have been claimed in the hero, long before this
-     drawer existed, so for that one offer "applied" is the shared claim rather
-     than drawer state. Every other reward is chosen here and only here. */
-  const [locallyApplied, setLocallyApplied] = useState(false);
-  const isWelcome = snapshot?.offer?.id === WELCOME_OFFER_ID;
-  const applied = isWelcome ? offerClaimed : locallyApplied;
-
-  const setApplied = useCallback(
-    (next: boolean) => {
-      if (!isWelcome) return setLocallyApplied(next);
-      if (next) claimOffer();
-      else releaseOffer();
-    },
-    [isWelcome, claimOffer, releaseOffer],
-  );
-  const [chosen, setChosen] = useState<string | null>(null);
 
   /* Whether to show the name and number as fields or as a line of text.
      Set by the Change button and by typing — never by an effect watching
@@ -117,19 +89,7 @@ export function CartDrawer() {
 
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [placed, setPlaced] = useState<{
-    code: string;
-    snapshot: LoyaltySnapshot;
-    whatsappUrl: string;
-  } | null>(null);
-
-  /* Look the customer up again whenever the drawer opens: a Bite may have
-     been confirmed at the stall since they last looked, and this is the one
-     screen where a stale reward turns into an argument at the counter. */
-  useEffect(() => {
-    if (!open) return;
-    void refreshSnapshot(phone);
-  }, [phone, open]);
+  const [placed, setPlaced] = useState<{ code: string; whatsappUrl: string } | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -146,17 +106,6 @@ export function CartDrawer() {
     };
   }, [open]);
 
-  const cartProductIds = useMemo(() => lines.map((l) => l.bowl.id), [lines]);
-
-  /* A ₹99 reward reprices a bowl that has to still be in the cart. Rather
-     than watching for that in an effect and un-applying it, the condition is
-     derived: if the bowl goes, the reward simply stops being active. Same
-     result, one less thing that can get out of step. */
-  const rewardActive =
-    applied &&
-    (snapshot?.offer?.type !== "ORDER_3_SIGNATURE_BOWL_99" ||
-      (!!chosen && cartProductIds.includes(chosen)));
-
   /* The price shown is computed by the same function the server uses to
      price the order, so the number in the drawer and the number written to
      the database cannot disagree. */
@@ -164,12 +113,9 @@ export function CartDrawer() {
     () =>
       quote({
         items: lines.map((l) => ({ id: l.bowl.id, qty: l.qty })),
-        reward:
-          rewardActive && snapshot?.offer
-            ? { type: snapshot.offer.type, productId: chosen ?? undefined }
-            : null,
+        reward: null,
       }),
-    [lines, rewardActive, chosen, snapshot],
+    [lines],
   );
 
   async function send() {
@@ -205,8 +151,6 @@ export function CartDrawer() {
       phone,
       name,
       items: lines.map((l) => ({ id: l.bowl.id, qty: l.qty })),
-      rewardId: rewardActive ? (snapshot?.offer?.id ?? null) : null,
-      productId: rewardActive ? chosen : null,
     }).catch(() => ({ ok: false as const, error: "network" }));
 
     /* Long enough that a fast reply cannot flash the overlay and vanish,
@@ -220,13 +164,7 @@ export function CartDrawer() {
 
     if (result.ok) {
       placeOrder(); // file it locally too, so "your last order" still works
-      setPlaced({ code: result.code, snapshot: result.snapshot, whatsappUrl: result.whatsappUrl });
-      /* The server just told us where they now stand — hand it to the shared
-         store so the hero ticket and the menu ladder move with the cart
-         instead of waiting for the next page load. */
-      putSnapshot(phone, result.snapshot);
-      setApplied(false);
-      setChosen(null);
+      setPlaced({ code: result.code, whatsappUrl: result.whatsappUrl });
       window.open(result.whatsappUrl, "_blank", "noopener,noreferrer");
       return;
     }
@@ -235,7 +173,7 @@ export function CartDrawer() {
        here, and they call for opposite answers:
 
          our server is down, but the phone has a connection
-           → hand the order to WhatsApp anyway. Losing a Bite is
+           → hand the order to WhatsApp anyway. Losing the record is
              recoverable; losing the sale is not.
 
          the phone has no connection
@@ -313,7 +251,6 @@ export function CartDrawer() {
               {placed ? (
                 <OrderPlaced
                   code={placed.code}
-                  snapshot={placed.snapshot}
                   whatsappUrl={placed.whatsappUrl}
                   onDone={() => setPlaced(null)}
                 />
@@ -401,21 +338,6 @@ export function CartDrawer() {
                     </li>
                   ))}
 
-                  {preview.giftLine && (
-                    <li className="flex items-center justify-between gap-4 rounded-xl bg-fresh-100 px-4 py-3">
-                      <span className="flex min-w-0 items-center gap-3">
-                        <ProductThumb
-                          id={preview.giftLine.id}
-                          name={preview.giftLine.name}
-                          className="size-9"
-                        />
-                        <span className="truncate text-sm font-medium text-ink-900">
-                          {preview.giftLine.name}
-                        </span>
-                      </span>
-                      <span className="text-sm font-semibold text-fresh-600">FREE</span>
-                    </li>
-                  )}
                 </ul>
               )}
 
@@ -428,21 +350,6 @@ export function CartDrawer() {
                  the bottom of the screen cannot. */}
               {lines.length > 0 && !placed && (
                 <div className="mt-6 space-y-4 border-t border-ink-900/8 pt-5">
-                  <RewardPanel
-                    snapshot={snapshot}
-                    loading={snapshotStatus === "loading" && !snapshot}
-                    applied={rewardActive}
-                    offerClaimed={offerClaimed}
-                    chosenProductId={chosen}
-                    cartProductIds={cartProductIds}
-                    onApply={() => setApplied(true)}
-                    onChoose={(id) => setChosen(id)}
-                    onRemove={() => {
-                      setApplied(false);
-                      setChosen(null);
-                    }}
-                  />
-
                   {pricing.combosApplied.length > 0 && (
                     <p className="text-xs text-ink-700">
                       <span className="font-semibold text-gold-600">Combo applied</span>
@@ -497,17 +404,6 @@ export function CartDrawer() {
                   sending ? "hidden sm:block" : ""
                 }`}
               >
-                {preview.reward && (
-                  <div className="flex items-baseline justify-between text-sm">
-                    <span className="text-ink-500">{preview.reward.label}</span>
-                    <span className="font-semibold text-fresh-600 tabular-nums">
-                      {preview.reward.amount > 0
-                        ? `−${menu.currency}${preview.reward.amount}`
-                        : "FREE"}
-                    </span>
-                  </div>
-                )}
-
                 <div className="mt-2 flex items-baseline justify-between">
                   <span className="text-sm text-ink-500">{copy.total}</span>
                   <span className="display text-2xl">
@@ -644,19 +540,17 @@ function ContactDetails({
  * What the customer sees the moment the order leaves.
  *
  * The code is the important thing on this screen: it is what staff look up to
- * confirm the order, which is what turns it into a Bite. The wording is
- * deliberate — the order is SENT, and the Bite lands when the cart confirms
+ * confirm the order. The wording is
+ * deliberate — the order is SENT, and it is only final when the cart confirms
  * it. Promising the milestone here would be a lie every time an order is
  * cancelled.
  */
 function OrderPlaced({
   code,
-  snapshot,
   whatsappUrl,
   onDone,
 }: {
   code: string;
-  snapshot: LoyaltySnapshot;
   whatsappUrl: string;
   onDone: () => void;
 }) {
@@ -679,18 +573,6 @@ function OrderPlaced({
         <span className="display mt-1 block text-2xl tracking-wide">{code}</span>
       </div>
 
-      <p className="mt-5 max-w-[32ch] text-xs text-ink-500">
-        {snapshot.state.completedOrders >= JOURNEY_LENGTH
-          ? biteClub.completeBody
-          : snapshot.next
-            ? `This will be Bite ${snapshot.state.completedOrders + 1}. ${
-                snapshot.next.ordersAway === 1
-                  ? `One more and ${snapshot.next.short} is yours.`
-                  : `${snapshot.next.short} at your ${snapshot.next.label}.`
-              }`
-            : biteClub.explainer}
-      </p>
-
       {/* A tapped link always opens; window.open after an await does not —
           Safari blocks it. This is the reliable path, and the automatic one
           above is the convenience. */}
@@ -703,8 +585,8 @@ function OrderPlaced({
         Send on WhatsApp
       </a>
 
-      {/* Asked here and nowhere else: they have just ordered, and the Bite
-          they earned is the reason to keep the app around. */}
+      {/* Asked here and nowhere else: they have just ordered, which is when
+          keeping the app around is most plausibly wanted. */}
       <InstallPrompt />
 
       <button
