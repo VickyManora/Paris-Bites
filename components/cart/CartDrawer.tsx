@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { cart as copy, links, menu, orders as orderCopy } from "@/lib/content";
 import { formatOrderDate, type StoredOrder } from "@/lib/orders";
 import { itemLabel, whatsappMessage } from "@/lib/pricing";
-import { isMini } from "@/lib/product-id";
+import { sizeLabel, sizeOf } from "@/lib/product-id";
 import { quote } from "@/lib/loyalty/quote";
 import {
   rememberPhone,
@@ -286,13 +286,13 @@ export function CartDrawer() {
                           <p className="font-medium text-ink-900">{bowl.name}</p>
                           <p className="mt-0.5 text-xs text-muted">
                             {category.title}
-                            {/* Two sizes of one dessert are two lines with
-                                the same name; without this they are
-                                indistinguishable, and the ₹69 one looks like
-                                an error in the total. */}
-                            {isMini(bowl.id) && (
-                              <span className="font-semibold text-ink-700"> · Mini</span>
-                            )}
+                            {/* Each size of a dessert is its own line with the
+                                same name; without this they are
+                                indistinguishable. */}
+                            <span className="font-semibold text-ink-700">
+                              {" · "}
+                              {sizeLabel(sizeOf(bowl.id), category.kind)}
+                            </span>
                             {" · "}
                             {menu.currency}
                             {bowl.price}

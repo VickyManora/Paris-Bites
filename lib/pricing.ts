@@ -1,5 +1,5 @@
 import { menu, waffles, type Bowl, type Category } from "./content";
-import { baseProductId, isMini, productId, type Size } from "./product-id";
+import { baseProductId, productId, sizeLabel, sizeOf, type Size } from "./product-id";
 import { properName } from "./names";
 
 export type CartLine = { bowl: Bowl; category: Category; qty: number };
@@ -10,16 +10,34 @@ export const allBowls: { bowl: Bowl; category: Category }[] = [
   waffles.category,
 ].flatMap((category) => category.items.map((bowl) => ({ bowl, category })));
 
-/** every product in both sizes, as the menu offers them */
-export function sizedBowl(bowl: Bowl, size: Size): Bowl {
-  if (size === "full") return bowl;
+/** the sizes a product is sold in, smallest first */
+export function sizesOf(bowl: Bowl): Size[] {
+  return bowl.full === undefined ? ["mini", "regular"] : ["mini", "regular", "full"];
+}
+
+/** what one size of a product costs; undefined if it is not sold in that size */
+export function priceFor(bowl: Bowl, size: Size): number | undefined {
+  if (size === "mini") return bowl.mini;
+  if (size === "full") return bowl.full;
+  return bowl.price;
+}
+
+/**
+ * One size of a product, as an ordinary Bowl whose `id` and `price` are that
+ * size's. Undefined when the product is not sold in that size (a Full waffle).
+ */
+export function sizedBowl(bowl: Bowl, size: Size): Bowl | undefined {
+  if (size === "regular") return bowl;
+  const price = priceFor(bowl, size);
+  if (price === undefined) return undefined;
   return {
     ...bowl,
-    id: productId(bowl.id, "mini"),
-    price: bowl.mini,
-    /* A Mini has no former price — it did not exist before this menu — and
-       it carries no "Bestseller" badge, which belongs to the dessert rather
-       than to one size of it and would otherwise print twice on a card. */
+    id: productId(bowl.id, size),
+    price,
+    /* A former price belongs to the regular size only — Mini and Full did
+       not exist before this menu. The badge ("Bestseller") belongs to the
+       dessert rather than to one size of it, and would otherwise print
+       several times over. */
     original: undefined,
     badge: undefined,
   };
@@ -28,17 +46,17 @@ export function sizedBowl(bowl: Bowl, size: Size): Bowl {
 /**
  * The product an order line refers to, at the price for its size.
  *
- * This is the only place a `:mini` id is unpicked. Everything downstream —
+ * This is the only place a sized id is unpicked. Everything downstream —
  * the cart, the combo maths, the quote, the order slip — receives an
- * ordinary Bowl whose `price` is already right for what was bought, and
- * never has to know sizes exist.
+ * ordinary Bowl whose `price` is already right for what was bought.
+ * An id for a size the product is not sold in resolves to nothing, so it
+ * can never be priced.
  */
 export function findBowl(id: string) {
   const found = allBowls.find((b) => b.bowl.id === baseProductId(id));
   if (!found) return undefined;
-  return isMini(id)
-    ? { category: found.category, bowl: sizedBowl(found.bowl, "mini") }
-    : found;
+  const bowl = sizedBowl(found.bowl, sizeOf(id));
+  return bowl ? { category: found.category, bowl } : undefined;
 }
 
 /**
@@ -63,11 +81,10 @@ export function itemLabel(id: string, fallbackName?: string): string {
        what it is keeps the line short. */
     const saysIt = new RegExp(`\\b${kind}\\b`, "i").test(name);
     const label = saysIt ? name : `${name} (${kind})`;
-    /* The size goes last and always prints for a Mini. Two sizes at two
-       prices means a slip that says only "Oreo Licious Bowl" is an
-       instruction to make the wrong one. Full is the default and stays
-       unmarked, as it reads on the menu. */
-    return isMini(id) ? `${label} · Mini` : label;
+    /* The size goes last and always prints. Three sizes at three prices
+       means a slip that says only "Oreo Licious Bowl" is an instruction to
+       make the wrong one. */
+    return `${label} · ${sizeLabel(sizeOf(id), kind)}`;
   }
 
   /* Ids that orders were placed under before the catalogue changed, kept so
@@ -91,7 +108,7 @@ export function itemLabel(id: string, fallbackName?: string): string {
  * saving, and the combo is only used when it actually beats paying separately.
  *
  * NO CATEGORY CARRIES ONE TODAY. The 2-for offers were retired with the
- * September 2026 repricing, which cut Full bowls by 20–25% and left every
+ * September 2026 repricing, which cut bowls by 20–25% and left every
  * combo dearer than the two bowls it covered. The machinery stays because it
  * is correct and guarded — set `combo` on a category and it works — but
  * anything reading `combosApplied` is currently reading an empty list.

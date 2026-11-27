@@ -10,7 +10,8 @@ import {
 
 import { menu } from "@/lib/content";
 import type { Bowl as Product } from "@/lib/content";
-import { productId, type Size } from "@/lib/product-id";
+import { productId, sizeLabel, type Size } from "@/lib/product-id";
+import { priceFor, sizesOf } from "@/lib/pricing";
 import { useCart } from "../cart/CartContext";
 import { ease, riseItem } from "../motion/Reveal";
 import { useTilt } from "../motion/Tilt";
@@ -35,6 +36,7 @@ export function ProductCard({
   /** width of the overhang slot; waffles are wider and flatter than bowls */
   artClassName = "w-[52%] max-w-[176px]",
   addLabel,
+  kind = "Bowl",
   headingLevel: Heading = "h3",
 }: {
   product: Product;
@@ -43,18 +45,22 @@ export function ProductCard({
   artClassName?: string;
   /** noun for the aria-labels, e.g. "waffle"; omit for plain product names */
   addLabel?: string;
+  /** names the sizes: a bowl's regular size is Medium, a waffle's is Regular */
+  kind?: "Bowl" | "Waffle";
   /** keeps the document outline correct: h4 under a category, h3 without one */
   headingLevel?: "h3" | "h4";
 }) {
   const { qtys, add, setQty } = useCart();
 
-  /* Which size the Add button will add. Full is the default because it is
-     the main product; the Mini's price is on the card either way, never
-     behind this toggle — it is the entry price and hiding it would defeat
-     the point of having one. */
-  const [size, setSize] = useState<Size>("full");
+  /* Which size the Add button will add. The regular size (Medium / Regular)
+     is the default because it is the main product; every size's price is on
+     the card either way, never behind this toggle. */
+  const sizes = sizesOf(product);
+  const [size, setSize] = useState<Size>("regular");
   const orderedId = productId(product.id, size);
   const qty = qtys[orderedId] ?? 0;
+  const price = priceFor(product, size) ?? product.price;
+  const label = sizeLabel(size, kind);
   const { ref, rotateX, rotateY, glareBackground, handlers, reduce } =
     useTilt<HTMLDivElement>({ max: 9 });
   const pop = useAnimationControls();
@@ -90,9 +96,7 @@ export function ProductCard({
     ([pointerTilt, viewportTilt]) => pointerTilt + viewportTilt,
   );
 
-  const noun = `${addLabel ? `${product.name} ${addLabel}` : product.name} (${
-    size === "mini" ? "Mini" : "Full"
-  })`;
+  const noun = `${addLabel ? `${product.name} ${addLabel}` : product.name} (${label})`;
 
   const addWithPop = () => {
     add(orderedId);
@@ -170,100 +174,121 @@ export function ProductCard({
         </div>
 
         <div className="mt-5 flex flex-1 items-end">
-          <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-ink-900/8 pt-4 [transform:translateZ(30px)]">
-            {/* Both prices, always. The Mini is the entry point into the
-                menu, so it is never one tap away behind a selected state —
-                you can read what the cheapest way in costs without touching
-                anything. Tapping a price is also what chooses it. */}
+          <div className="w-full border-t border-ink-900/8 pt-4 [transform:translateZ(30px)]">
+            {/* Every size with its price, always visible. Tapping one chooses
+                it; a small count shows which sizes are already in the cart,
+                since each size is its own line there. */}
             <div
               role="group"
               aria-label={`${product.name} size`}
-              className="flex items-center gap-1.5"
+              className={`grid gap-1.5 ${sizes.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}
             >
-              {(["mini", "full"] as const).map((s) => {
+              {sizes.map((s) => {
                 const on = size === s;
-                const amount = s === "mini" ? product.mini : product.price;
+                const inCart = qtys[productId(product.id, s)] ?? 0;
                 return (
                   <button
                     key={s}
                     type="button"
                     onClick={() => setSize(s)}
                     aria-pressed={on}
-                    className={`flex items-baseline gap-1.5 rounded-full px-3.5 py-2 transition-colors ${
+                    aria-label={`${sizeLabel(s, kind)}, ${menu.currency}${priceFor(product, s)}${
+                      inCart ? `, ${inCart} in cart` : ""
+                    }`}
+                    className={`relative flex min-h-12 flex-col items-center justify-center rounded-xl px-2 py-1.5 transition-colors ${
                       on
                         ? "bg-ink-900 text-cream-50"
                         : "border border-ink-900/12 text-ink-700 hover:border-gold-500"
                     }`}
                   >
-                    <span className="text-[0.6rem] font-semibold uppercase tracking-wider opacity-70">
-                      {s === "mini" ? "Mini" : "Full"}
+                    <span className="text-[0.6rem] font-semibold uppercase tracking-wider opacity-75">
+                      {sizeLabel(s, kind)}
                     </span>
                     <span className="text-sm font-semibold tabular-nums">
                       {menu.currency}
-                      {amount}
+                      {priceFor(product, s)}
                     </span>
-                    {/* the price this size used to be — only on the Full,
-                        because the Mini is new and never had one */}
-                    {s === "full" && product.original !== undefined && (
-                      <s className="text-[0.7rem] tabular-nums opacity-55">
-                        {menu.currency}
-                        {product.original}
-                      </s>
+                    {inCart > 0 && (
+                      <span
+                        aria-hidden
+                        className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full bg-gold-500 text-[0.6rem] font-bold text-cream-50 tabular-nums"
+                      >
+                        {inCart}
+                      </span>
                     )}
                   </button>
                 );
               })}
             </div>
 
-            {qty === 0 ? (
-              <motion.button
-                type="button"
-                onClick={addWithPop}
-                aria-label={`Add ${noun} to cart`}
-                whileTap={reduce ? undefined : { scale: 0.92 }}
-                transition={{ type: "spring", stiffness: 500, damping: 26 }}
-                className="flex min-h-11 items-center rounded-full bg-ink-900 px-6 text-xs font-semibold uppercase tracking-wider text-cream-50 transition-colors hover:bg-gold-600 lg:min-h-0 lg:px-5 lg:py-2.5"
-              >
-                Add
-              </motion.button>
-            ) : (
-              <div className="flex items-center rounded-full border border-ink-900/12 bg-cream-50">
+            <div className="mt-3 flex items-center justify-between gap-3">
+              {/* the chosen size and what it costs, said once more beside the
+                  button that acts on it */}
+              <p aria-live="polite" className="flex min-w-0 items-baseline gap-1.5">
+                <span className="text-xs font-medium text-ink-500">{label}</span>
+                <span className="display text-xl tabular-nums text-ink-900">
+                  {menu.currency}
+                  {price}
+                </span>
+                {/* a former price exists for the regular size only */}
+                {size === "regular" && product.original !== undefined && (
+                  <s className="text-xs tabular-nums text-muted">
+                    {menu.currency}
+                    {product.original}
+                  </s>
+                )}
+              </p>
+
+              {qty === 0 ? (
                 <motion.button
                   type="button"
-                  aria-label={`Remove one ${noun}`}
-                  onClick={() => setQty(orderedId, qty - 1)}
-                  whileTap={reduce ? undefined : { scale: 0.85 }}
-                  className="flex size-11 items-center justify-center rounded-full text-ink-700 transition-colors hover:bg-cream-200 lg:size-9"
+                  onClick={addWithPop}
+                  aria-label={`Add ${noun} to cart`}
+                  whileTap={reduce ? undefined : { scale: 0.92 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 26 }}
+                  className="flex min-h-11 items-center rounded-full bg-ink-900 px-6 text-xs font-semibold uppercase tracking-wider text-cream-50 transition-colors hover:bg-gold-600 lg:min-h-0 lg:px-5 lg:py-2.5"
                 >
-                  −
+                  Add
                 </motion.button>
-                <motion.span
-                  key={qty}
-                  initial={reduce ? undefined : { y: -8, opacity: 0 }}
-                  animate={reduce ? undefined : { y: 0, opacity: 1 }}
-                  transition={{ duration: 0.25, ease }}
-                  className="w-6 text-center text-sm font-semibold tabular-nums text-ink-900"
-                >
-                  {qty}
-                </motion.span>
-                <motion.button
-                  type="button"
-                  aria-label={`Add one ${noun}`}
-                  onClick={() => {
-                    setQty(orderedId, qty + 1);
-                    if (!reduce)
-                      pop.start({
-                        scale: [1, 1.1, 1],
-                        transition: { duration: 0.4, ease },
-                      });
-                  }}
-                  whileTap={reduce ? undefined : { scale: 0.85 }}
-                  className="flex size-11 items-center justify-center rounded-full text-ink-700 transition-colors hover:bg-cream-200 lg:size-9"
-                >
-                  +
-                </motion.button>
-              </div>
-            )}
+              ) : (
+                <div className="flex items-center rounded-full border border-ink-900/12 bg-cream-50">
+                  <motion.button
+                    type="button"
+                    aria-label={`Remove one ${noun}`}
+                    onClick={() => setQty(orderedId, qty - 1)}
+                    whileTap={reduce ? undefined : { scale: 0.85 }}
+                    className="flex size-11 items-center justify-center rounded-full text-ink-700 transition-colors hover:bg-cream-200 lg:size-9"
+                  >
+                    −
+                  </motion.button>
+                  <motion.span
+                    key={qty}
+                    initial={reduce ? undefined : { y: -8, opacity: 0 }}
+                    animate={reduce ? undefined : { y: 0, opacity: 1 }}
+                    transition={{ duration: 0.25, ease }}
+                    className="w-6 text-center text-sm font-semibold tabular-nums text-ink-900"
+                  >
+                    {qty}
+                  </motion.span>
+                  <motion.button
+                    type="button"
+                    aria-label={`Add one ${noun}`}
+                    onClick={() => {
+                      setQty(orderedId, qty + 1);
+                      if (!reduce)
+                        pop.start({
+                          scale: [1, 1.1, 1],
+                          transition: { duration: 0.4, ease },
+                        });
+                    }}
+                    whileTap={reduce ? undefined : { scale: 0.85 }}
+                    className="flex size-11 items-center justify-center rounded-full text-ink-700 transition-colors hover:bg-cream-200 lg:size-9"
+                  >
+                    +
+                  </motion.button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

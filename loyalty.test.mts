@@ -230,7 +230,7 @@ const q99 = quote({
   items: [{ id: "kitkat-break", qty: 1 }],
   reward: { type: "ORDER_3_SIGNATURE_BOWL_99", productId: "kitkat-break" },
 });
-check("   ₹169 bowl costs ₹99 with the reward", q99.total === 99, `total ₹${q99.total}`);
+check("   ₹139 bowl costs ₹99 with the reward", q99.total === 99, `total ₹${q99.total}`);
 
 // the 3rd order spends the ₹99 bowl
 r = await orderAndComplete(alice.id, [{ id: "kitkat-break", qty: 1 }], r99.id, "kitkat-break");
@@ -358,7 +358,7 @@ const tampered = quote({
   reward: { type: "ORDER_6_FREE_BOWL", productId: "kitkat-break" },
 });
 check("13. client cannot send its own price — the server prices from the catalogue",
-  tampered.lines[0].bowl.price === 119,
+  tampered.lines[0].bowl.price === 129,
   `₹${tampered.lines[0].bowl.price}`,
 );
 const bobState = await loyaltyState(db, bob.id);
@@ -374,20 +374,20 @@ check("14b. loyalty state is read from the server, not the request",
   (await loyaltyState(db, bob.id)).completedOrders === 0,
 );
 
-// the Mini Bowl is a real ₹69 product now, so it CAN be bought — what must
+// the Mini Bowl is a real ₹79 product now, so it CAN be bought — what must
 // not happen is it sneaking into a reward it was never meant for
 const MINI_OREO = productId("oreo-licious", "mini");
 const bought = quote({ items: [{ id: MINI_OREO, qty: 2 }] });
 check(
   "   a Mini is purchasable at its own menu price",
-  bought.lines.length === 1 && bought.total === 69 * 2,
-  `₹${bought.total} for 2 × ₹69`,
+  bought.lines.length === 1 && bought.total === 79 * 2,
+  `₹${bought.total} for 2 × ₹79`,
 );
-/* ₹99 for a ₹69 Mini is not a reward, it is a surcharge — and a "FREE Bowl"
+/* ₹99 for a ₹79 Mini is not a reward, it is a surcharge — and a "FREE Bowl"
    that arrives Mini is a prize the customer did not win. Both rewards name
-   the Full size, and these are what hold them to it. */
+   the regular size, and these are what hold them to it. */
 check(
-  "   a ₹69 Mini is not eligible for the ₹99 Signature reward",
+  "   a ₹79 Mini is not eligible for the ₹99 Signature reward",
   !isEligibleProduct("ORDER_3_SIGNATURE_BOWL_99", MINI_OREO),
 );
 check(
@@ -407,7 +407,7 @@ check(
    nothing. Gift ₹139 against a ₹129 purchase reproduces that shape. */
 {
   const q = quote({
-    items: [{ id: "oreo-licious", qty: 1 }],
+    items: [{ id: "death-by-chocolate", qty: 1 }],
     reward: { type: "ORDER_6_FREE_BOWL", productId: "kitkat-break" },
   });
   check(
