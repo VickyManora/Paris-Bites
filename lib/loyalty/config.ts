@@ -37,10 +37,10 @@ export type RewardMechanic =
  * Which products a reward may be spent on, expressed against the catalogue's
  * own category ids — never against product names, which change.
  *
- * `size` matters now that every bowl is sold as a Mini and a Full at two
+ * `size` matters because every bowl is sold in several sizes at different
  * prices. The 5th Bite gives away a Mini; the ₹99 bowl and the free bowl are
- * Full ones, and must say so — ₹99 for a ₹69 Mini is not a reward, and a
- * free "bowl" that arrives Mini is a disappointment dressed as a prize.
+ * the regular (Medium) size, and must say so. (Bite Club is switched off on
+ * the website; these rules are kept so it can be switched back on.)
  */
 export type EligibilityRule = { categories: string[]; size: Size };
 
@@ -148,7 +148,7 @@ export const MILESTONES: Milestone[] = [
     mechanic: {
       kind: "fixed-price",
       price: 99,
-      eligible: { categories: [SIGNATURE], size: "full" },
+      eligible: { categories: [SIGNATURE], size: "regular" },
     },
     completedHeadline: "3rd Bite complete!",
     completedBody: "Your ₹99 Signature Bowl reward is unlocked.",
@@ -208,7 +208,7 @@ export const MILESTONES: Milestone[] = [
        just as well either way. */
     mechanic: {
       kind: "free-item",
-      eligible: { categories: [SIGNATURE], size: "full" },
+      eligible: { categories: [SIGNATURE], size: "regular" },
     },
     completedHeadline: "6th Bite complete! 👑",
     completedBody: "You're officially a Bite Club VIP. Your FREE Bowl reward is unlocked.",
@@ -253,7 +253,7 @@ export function eligibleProducts(type: RewardType): Bowl[] {
   const categories: Category[] = [...menu.categories, waffles.category];
   return categories
     .filter((c) => ids.has(c.id))
-    .flatMap((c) => c.items.map((item) => sizedBowl(item, rule.eligible.size)));
+    .flatMap((c) => c.items.flatMap((item) => sizedBowl(item, rule.eligible.size) ?? []));
 }
 
 export function isEligibleProduct(type: RewardType, productId: string): boolean {

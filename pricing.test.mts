@@ -8,6 +8,7 @@ const line = (id: string, qty: number): CartLine => {
   return { ...f, qty };
 };
 const mini = (id: string, qty: number) => line(productId(id, "mini"), qty);
+const full = (id: string, qty: number) => line(productId(id, "full"), qty);
 
 /* The 2-for combos were retired with the September 2026 repricing: two Full
    Signature bowls come to ₹248 where the combo asked ₹299, which is not an
@@ -15,14 +16,14 @@ const mini = (id: string, qty: number) => line(productId(id, "mini"), qty);
    that — including the shapes that USED to be discounted, because a combo
    quietly coming back is a price change nobody decided. */
 const cases: [string, CartLine[], number, number][] = [
-  // label, lines, expected total, expected savings
-  ["1 signature", [line("death-by-chocolate", 1)], 119, 0],
-  ["2 signature (no combo any more)", [line("death-by-chocolate", 1), line("oreo-licious", 1)], 248, 0],
-  ["2× the same signature", [line("death-by-chocolate", 2)], 238, 0],
-  ["3 signature", [line("death-by-chocolate", 1), line("oreo-licious", 1), line("kitkat-break", 1)], 387, 0],
+  // label, lines, expected total, expected savings — bare ids are Medium bowls / Regular waffles
+  ["1 signature", [line("death-by-chocolate", 1)], 129, 0],
+  ["2 signature (no combo any more)", [line("death-by-chocolate", 1), line("oreo-licious", 1)], 268, 0],
+  ["2× the same signature", [line("death-by-chocolate", 2)], 258, 0],
+  ["3 signature", [line("death-by-chocolate", 1), line("oreo-licious", 1), line("kitkat-break", 1)], 407, 0],
   ["2 premium", [line("nutella-bliss", 1), line("blueberry-bliss", 1)], 348, 0],
-  ["cross-category", [line("death-by-chocolate", 1), line("nutella-bliss", 1)], 298, 0],
-  ["2 sig + 2 prem", [line("death-by-chocolate", 1), line("oreo-licious", 1), line("nutella-bliss", 1), line("blueberry-bliss", 1)], 596, 0],
+  ["cross-category", [line("death-by-chocolate", 1), line("nutella-bliss", 1)], 308, 0],
+  ["2 sig + 2 prem", [line("death-by-chocolate", 1), line("oreo-licious", 1), line("nutella-bliss", 1), line("blueberry-bliss", 1)], 616, 0],
   ["empty", [], 0, 0],
   ["qty zero is ignored", [line("death-by-chocolate", 0)], 0, 0],
   ["1 waffle", [line("waffle-death-by-chocolate", 1)], 129, 0],
@@ -32,8 +33,8 @@ const cases: [string, CartLine[], number, number][] = [
     line("waffle-death-by-chocolate", 1), line("waffle-kitkat-break", 1),
     line("waffle-strawberry-bliss", 1), line("waffle-blueberry-dream", 1),
     line("waffle-nutella-indulgence", 1), line("waffle-biscoff-bliss", 1),
-  ], 904, 0],
-  ["bowls and a waffle together", [line("oreo-licious", 2), line("waffle-kitkat-break", 1)], 258 + 139, 0],
+  ], 129 + 139 + 149 + 149 + 169 + 169, 0],
+  ["bowls and a waffle together", [line("oreo-licious", 2), line("waffle-kitkat-break", 1)], 278 + 139, 0],
 ];
 
 let fail = 0;
@@ -54,17 +55,21 @@ for (const [label, lines] of cases) {
   console.log(`${ok ? "PASS" : "FAIL"}  ${label} — ₹${p.total} = list ₹${p.listTotal}`);
 }
 
-console.log("\n── Mini is a size, priced as one ──");
+console.log("\n── every size is priced as itself ──");
 {
   const cases: [string, CartLine[], number][] = [
-    ["a Mini bowl is its own price", [mini("death-by-chocolate", 1)], 69],
-    ["two Minis", [mini("death-by-chocolate", 2)], 138],
-    ["a Mini and a Full of the same dessert are separate lines",
-      [mini("death-by-chocolate", 1), line("death-by-chocolate", 1)], 69 + 119],
+    ["a Mini bowl is its own price", [mini("death-by-chocolate", 1)], 79],
+    ["a Full bowl is its own price", [full("death-by-chocolate", 1)], 199],
+    ["two Minis", [mini("death-by-chocolate", 2)], 158],
+    ["Mini, Medium and Full of one dessert are separate lines",
+      [mini("death-by-chocolate", 1), line("death-by-chocolate", 1), full("death-by-chocolate", 1)], 79 + 129 + 199],
     ["the dearest Mini bowl", [mini("nutella-bliss", 1)], 99],
-    ["a Mini waffle", [mini("waffle-death-by-chocolate", 1)], 65],
+    ["the dearest Full bowl", [full("nutella-bliss", 1)], 269],
+    ["a Mini waffle", [mini("waffle-death-by-chocolate", 1)], 79],
     ["Minis across the menu",
-      [mini("oreo-licious", 1), mini("tiramisu", 1), mini("waffle-biscoff-bliss", 1)], 69 + 79 + 85],
+      [mini("oreo-licious", 1), mini("tiramisu", 1), mini("waffle-biscoff-bliss", 1)], 79 + 89 + 99],
+    ["Fulls across the menu, with quantity",
+      [full("oreo-licious", 2), full("tiramisu", 1), full("biscoff-delight", 1)], 2 * 209 + 249 + 269],
   ];
   for (const [label, lines, expected] of cases) {
     const p = priceCart(lines);
@@ -73,21 +78,59 @@ console.log("\n── Mini is a size, priced as one ──");
     console.log(`${ok ? "PASS" : "FAIL"}  ${label} — ₹${p.total} (want ₹${expected})`);
   }
 
-  // a Mini and a Full of one dessert must not collapse into a single line
-  const two = priceCart([mini("oreo-licious", 1), line("oreo-licious", 1)]);
-  const ok = two.count === 2 && two.total === 69 + 129;
+  // three sizes of one dessert must not collapse into a single line
+  const three = priceCart([mini("oreo-licious", 1), line("oreo-licious", 1), full("oreo-licious", 1)]);
+  const ok = three.count === 3 && three.total === 79 + 139 + 209;
   if (!ok) fail++;
-  console.log(`${ok ? "PASS" : "FAIL"}  two sizes of one dessert stay two lines — ${two.count} items, ₹${two.total}`);
+  console.log(`${ok ? "PASS" : "FAIL"}  three sizes of one dessert stay three lines — ${three.count} items, ₹${three.total}`);
+
+  // waffles have no Full: such an id must never be priced
+  const noFull = findBowl(productId("waffle-death-by-chocolate", "full"));
+  if (noFull) fail++;
+  console.log(`${noFull ? "FAIL" : "PASS"}  a Full waffle does not exist`);
+}
+
+console.log("\n── the exact price list ──");
+{
+  // [id, mini, medium/regular, full]
+  const expected: [string, number, number, number | undefined][] = [
+    ["death-by-chocolate", 79, 129, 199],
+    ["oreo-licious", 79, 139, 209],
+    ["kitkat-break", 79, 139, 209],
+    ["tiramisu", 89, 169, 249],
+    ["strawberry-bliss", 89, 169, 249],
+    ["blueberry-bliss", 89, 169, 249],
+    ["biscoff-delight", 99, 179, 269],
+    ["nutella-bliss", 99, 179, 269],
+    ["waffle-death-by-chocolate", 79, 129, undefined],
+    ["waffle-kitkat-break", 89, 139, undefined],
+    ["waffle-strawberry-bliss", 89, 149, undefined],
+    ["waffle-blueberry-dream", 89, 149, undefined],
+    ["waffle-biscoff-bliss", 99, 169, undefined],
+    ["waffle-nutella-indulgence", 99, 169, undefined],
+  ];
+  for (const [id, m, r, f] of expected) {
+    const got = [
+      findBowl(productId(id, "mini"))?.bowl.price,
+      findBowl(id)?.bowl.price,
+      findBowl(productId(id, "full"))?.bowl.price,
+    ];
+    const ok = got[0] === m && got[1] === r && got[2] === f;
+    if (!ok) fail++;
+    console.log(`${ok ? "PASS" : "FAIL"}  ${id} — ${got.join(" / ")}${ok ? "" : ` (want ${m} / ${r} / ${f})`}`);
+  }
 }
 
 console.log("\n── what the slip says ──");
 {
   const checks: [string, string][] = [
-    ["death-by-chocolate", "Death by Chocolate (Bowl)"],
+    ["death-by-chocolate", "Death by Chocolate (Bowl) · Medium"],
     [productId("death-by-chocolate", "mini"), "Death by Chocolate (Bowl) · Mini"],
-    ["oreo-licious", "Oreo Licious Bowl"],
+    [productId("death-by-chocolate", "full"), "Death by Chocolate (Bowl) · Full"],
+    ["oreo-licious", "Oreo Licious Bowl · Medium"],
     [productId("oreo-licious", "mini"), "Oreo Licious Bowl · Mini"],
-    ["waffle-death-by-chocolate", "Death by Chocolate (Waffle)"],
+    [productId("oreo-licious", "full"), "Oreo Licious Bowl · Full"],
+    ["waffle-death-by-chocolate", "Death by Chocolate (Waffle) · Regular"],
     [productId("waffle-death-by-chocolate", "mini"), "Death by Chocolate (Waffle) · Mini"],
     // retired ids: orders placed under them are still in the book
     ["mini-bowl", "Mini Bowl"],
@@ -107,14 +150,14 @@ console.log("\n── what the slip says ──");
 
 console.log("\n── the price list itself ──");
 {
-  const all = [...menu.categories, waffles.category].flatMap((c) =>
+  const all = ([...menu.categories, waffles.category] as Category[]).flatMap((c) =>
     c.items.map((i) => ({ ...i, category: c.title })),
   );
 
-  const cheaper = all.filter((i) => i.mini >= i.price);
+  const cheaper = all.filter((i) => i.mini >= i.price || (i.full !== undefined && i.full <= i.price));
   if (cheaper.length) fail++;
   console.log(
-    `${cheaper.length === 0 ? "PASS" : "FAIL"}  every Mini costs less than its Full`,
+    `${cheaper.length === 0 ? "PASS" : "FAIL"}  Mini < Medium/Regular < Full for every product`,
     cheaper.map((i) => i.name).join(", "),
   );
 
@@ -145,13 +188,13 @@ console.log("\n── the price list itself ──");
   for (const c of categories) {
     console.log(
       `NOTE  ${c.title}: Mini ₹${Math.min(...c.items.map((i) => i.mini))}–₹${Math.max(...c.items.map((i) => i.mini))}` +
-      `  Full ₹${Math.min(...c.items.map((i) => i.price))}–₹${Math.max(...c.items.map((i) => i.price))}`,
+      `  ${c.kind === "Bowl" ? "Medium" : "Regular"} ₹${Math.min(...c.items.map((i) => i.price))}–₹${Math.max(...c.items.map((i) => i.price))}`,
     );
   }
 }
 
 console.log("\n--- sample WhatsApp message ---");
-console.log(whatsappMessage([line("death-by-chocolate", 1), mini("oreo-licious", 1), line("nutella-bliss", 1)], "Likhit"));
+console.log(whatsappMessage([line("death-by-chocolate", 1), mini("oreo-licious", 1), full("nutella-bliss", 1)], "Likhit"));
 
 console.log(`\n${fail === 0 ? "ALL PASS" : fail + " FAILURES"}`);
 process.exit(fail === 0 ? 0 : 1);

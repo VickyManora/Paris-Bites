@@ -79,6 +79,7 @@ function WaffleCard({ waffle }: { waffle: Product }) {
       product={waffle}
       categoryTitle={waffles.category.title}
       addLabel="waffle"
+      kind="Waffle"
       // a waffle is landscape where a bowl is square, so it needs more width
       // to carry the same visual weight over the tile
       artClassName="w-[68%] max-w-[228px]"
